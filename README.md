@@ -50,7 +50,20 @@ Acesse: `http://localhost:3000`
    - `SUPABASE_SERVICE_ROLE_KEY`
 4. Deploy.
 
-## 6. Observacoes importantes
+### Importacao direta no Vercel (link rapido)
+
+```text
+https://vercel.com/new/clone?repository-url=https://github.com/Burgamansi/rjt-sas-pdca-brain&teamslug=rogerio-marcos-s-projects
+```
+
+## 6. Reset do banco (inicio do zero)
+
+No SQL Editor do Supabase, execute:
+
+1. `supabase/migrations/20260420_reset_pdca_brain.sql`
+2. (Opcional) `supabase/migrations/20260420_create_pdca_brain.sql` se quiser reaplicar o script de criacao original.
+
+## 7. Observacoes importantes
 
 - O parser aceita variacoes de cabecalho (`fase`, `acao`, `subacao`, `responsavel`, `gut`, etc.).
 - `pdca_id` e `titulo` sao inferidos principalmente pelo nome do arquivo.
