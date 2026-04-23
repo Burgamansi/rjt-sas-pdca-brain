@@ -39,11 +39,25 @@ function formatDate(value: string): string {
   return new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short" }).format(date);
 }
 
+function isSupabaseEnvMissing(message: string | undefined): boolean {
+  const text = normalizeText(message);
+  return text.includes("supabase_url nao definida") || text.includes("supabase_service_role_key nao definida");
+}
+
+function mergePdcaRecords(existing: PdcaRecord[], incoming: PdcaRecord[]): PdcaRecord[] {
+  const byId = new Map(existing.map((pdca) => [pdca.id, pdca]));
+  for (const pdca of incoming) {
+    byId.set(pdca.id, pdca);
+  }
+  return Array.from(byId.values()).sort((a, b) => a.id.localeCompare(b.id, "pt-BR", { numeric: true }));
+}
+
 export default function Page() {
   const [pdcas, setPdcas] = useState<PdcaRecord[]>([]);
   const [selectedPdcaId, setSelectedPdcaId] = useState<string>("");
   const [loading, setLoading] = useState(true);
   const [importing, setImporting] = useState(false);
+  const [localMode, setLocalMode] = useState(false);
   const [message, setMessage] = useState("");
   const [logs, setLogs] = useState<ImportLogEntry[]>([]);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -55,11 +69,17 @@ export default function Page() {
       const payload = (await response.json()) as { ok: boolean; pdcas?: PdcaRecord[]; message?: string };
 
       if (!response.ok || !payload.ok) {
-        setMessage(payload.message ?? "Falha ao buscar dados.");
+        if (isSupabaseEnvMissing(payload.message)) {
+          setLocalMode(true);
+          setMessage("Supabase nao configurado no deploy. Importe e analise os PDCAs em modo local nesta sessao.");
+        } else {
+          setMessage(payload.message ?? "Falha ao buscar dados.");
+        }
         setLoading(false);
         return;
       }
 
+      setLocalMode(false);
       setPdcas(payload.pdcas ?? []);
       if (!selectedPdcaId && payload.pdcas?.length) {
         setSelectedPdcaId(payload.pdcas[0].id);
@@ -69,6 +89,13 @@ export default function Page() {
       setMessage("Falha de rede ao carregar dados.");
       setLoading(false);
     }
+  }
+
+  function useLocalFallback(parsed: PdcaRecord[], failureMessage: string) {
+    setLocalMode(true);
+    setPdcas((prev) => mergePdcaRecords(prev, parsed));
+    setSelectedPdcaId((prev) => prev || parsed[0]?.id || "");
+    setMessage(failureMessage);
   }
 
   useEffect(() => {
@@ -137,12 +164,17 @@ export default function Page() {
           body: JSON.stringify({ pdcas: parsed }),
         });
         const payload = (await response.json()) as { ok: boolean; message?: string };
-        setMessage(payload.message ?? "Upload finalizado.");
         if (response.ok && payload.ok) {
+          setLocalMode(false);
+          setMessage(payload.message ?? "Upload finalizado.");
           await loadPdcas();
+        } else if (isSupabaseEnvMissing(payload.message)) {
+          useLocalFallback(parsed, "Supabase nao configurado no deploy. Upload carregado apenas nesta sessao local.");
+        } else {
+          useLocalFallback(parsed, `${payload.message ?? "Falha ao sincronizar com Supabase."} Dados mantidos nesta sessao.`);
         }
       } catch {
-        setMessage("Falha de rede ao sincronizar com Supabase.");
+        useLocalFallback(parsed, "Falha de rede ao sincronizar com Supabase. Dados mantidos nesta sessao local.");
       }
     } else {
       setMessage("Nenhum arquivo valido foi importado.");
@@ -238,7 +270,11 @@ export default function Page() {
         <div className="panel" style={{ flex: 1, minWidth: 340 }}>
           <h2 style={{ marginTop: 0 }}>Portfolio PDCA</h2>
           {loading ? <p className="muted">Carregando...</p> : null}
-          {!loading && !pdcas.length ? <p className="muted">Ainda sem PDCAs sincronizados no Supabase.</p> : null}
+          {!loading && !pdcas.length ? (
+            <p className="muted">
+              {localMode ? "Sem PDCAs carregados nesta sessao local." : "Ainda sem PDCAs sincronizados no Supabase."}
+            </p>
+          ) : null}
           <div className="pdca-list">
             {pdcas.map((pdca) => (
               <article key={pdca.id} className="pdca-card">
