@@ -1,9 +1,14 @@
 import { createClient } from "@supabase/supabase-js";
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || "";
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || "";
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+let supabaseClient = null;
+if (supabaseUrl && supabaseAnonKey) {
+  supabaseClient = createClient(supabaseUrl, supabaseAnonKey);
+}
+
+export const supabase = supabaseClient;
 
 export type Evidence = {
   id: string;
@@ -24,19 +29,24 @@ export async function fetchEvidences(
 ): Promise<Evidence[]> {
   if (!supabase) return [];
 
-  const { data, error } = await supabase
-    .from("pdca_evidences")
-    .select("*")
-    .eq("pdca_id", pdcaId)
-    .eq("sub_action_id", subActionId)
-    .order("created_at", { ascending: false });
+  try {
+    const { data, error } = await supabase
+      .from("pdca_evidences")
+      .select("*")
+      .eq("pdca_id", pdcaId)
+      .eq("sub_action_id", subActionId)
+      .order("created_at", { ascending: false });
 
-  if (error) {
-    console.error("Error fetching evidences:", error);
+    if (error) {
+      console.error("Error fetching evidences:", error);
+      return [];
+    }
+
+    return data || [];
+  } catch (err) {
+    console.error("Fetch error:", err);
     return [];
   }
-
-  return data || [];
 }
 
 export async function uploadEvidence(
@@ -94,12 +104,17 @@ export async function uploadEvidence(
 export async function deleteEvidence(id: string): Promise<boolean> {
   if (!supabase) return false;
 
-  const { error } = await supabase.from("pdca_evidences").delete().eq("id", id);
+  try {
+    const { error } = await supabase.from("pdca_evidences").delete().eq("id", id);
 
-  if (error) {
-    console.error("Error deleting evidence:", error);
+    if (error) {
+      console.error("Error deleting evidence:", error);
+      return false;
+    }
+
+    return true;
+  } catch (err) {
+    console.error("Delete error:", err);
     return false;
   }
-
-  return true;
 }
