@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import {
   X,
   Upload,
@@ -15,7 +15,7 @@ import {
   CheckCircle,
   Paperclip,
 } from "lucide-react";
-import { fetchEvidences, uploadEvidence } from "@/lib/evidences";
+import { fetchEvidences, uploadEvidence, type Evidence } from "@/lib/evidences";
 
 type EvidenceFile = {
   id: string;
@@ -127,21 +127,32 @@ export function EvidenceDrawer({ isOpen, onClose, subAction }: EvidenceDrawerPro
   const hasEvidence = files.length > 0;
   const lastUpdate = files.length > 0 ? files[files.length - 1].uploadedAt : null;
 
-  const handleFileUpload = () => {
-    setIsUploading(true);
-    setTimeout(() => {
-      setFiles((prev) => [
-        ...prev,
-        {
-          id: String(prev.length + 1),
-          name: `Novo_Arquivo_${prev.length + 1}.pdf`,
-          type: "pdf",
-          uploadedAt: new Date().toISOString(),
-          size: Math.random() * 500000,
-        },
-      ]);
+  const handleFileUpload = async () => {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = ".pdf,.xlsx,.xls,.png,.jpg,.docx,.doc";
+    input.onchange = async (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (!file || !subAction?.pdcaId || !subAction?.id) return;
+      
+      setIsUploading(true);
+      const result = await uploadEvidence(subAction.pdcaId, subAction.id, file);
+      
+      if (result) {
+        setFiles((prev) => [
+          ...prev,
+          {
+            id: result.id,
+            name: result.file_name,
+            type: result.file_type as "pdf" | "xlsx" | "png" | "jpg" | "docx",
+            uploadedAt: result.created_at,
+            size: result.file_size || 0,
+          },
+        ]);
+      }
       setIsUploading(false);
-    }, 1000);
+    };
+    input.click();
   };
 
   return (

@@ -46,27 +46,49 @@ export async function uploadEvidence(
 ): Promise<Evidence | null> {
   if (!supabase) return null;
 
-  const fileType = file.name.split(".").pop() || "";
+  const fileType = file.name.split(".").pop()?.toLowerCase() || "";
   const fileName = file.name;
+  const filePath = `${pdcaId}/${subActionId}/${Date.now()}_${fileName}`;
 
-  const { data, error } = await supabase
-    .from("pdca_evidences")
-    .insert({
-      pdca_id: pdcaId,
-      sub_action_id: subActionId,
-      file_name: fileName,
-      file_type: fileType,
-      file_size: file.size,
-    })
-    .select()
-    .single();
+  try {
+    const { data: uploadData, error: uploadError } = await supabase.storage
+      .from("pdca-evidences")
+      .upload(filePath, file, {
+        cacheControl: "3600",
+        upsert: false,
+      });
 
-  if (error) {
-    console.error("Error uploading evidence:", error);
+    if (uploadError) {
+      console.error("Error uploading file to storage:", uploadError);
+    }
+
+    const { data: urlData } = supabase.storage
+      .from("pdca-evidences")
+      .getPublicUrl(filePath);
+
+    const { data: dbData, error: dbError } = await supabase
+      .from("pdca_evidences")
+      .insert({
+        pdca_id: pdcaId,
+        sub_action_id: subActionId,
+        file_name: fileName,
+        file_type: fileType,
+        file_url: urlData.publicUrl,
+        file_size: file.size,
+      })
+      .select()
+      .single();
+
+    if (dbError) {
+      console.error("Error saving evidence to DB:", dbError);
+      return null;
+    }
+
+    return dbData;
+  } catch (err) {
+    console.error("Upload error:", err);
     return null;
   }
-
-  return data;
 }
 
 export async function deleteEvidence(id: string): Promise<boolean> {
