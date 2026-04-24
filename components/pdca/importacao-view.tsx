@@ -91,6 +91,15 @@ function normalize(value: unknown): string {
   }
 }
 
+function safeText(value: unknown): string {
+  if (value === null || value === undefined) return "";
+  try {
+    return String(value).toLowerCase();
+  } catch {
+    return "";
+  }
+}
+
 function parseExcelToRecords(buffer: ArrayBuffer): { rows: ParsedRow[]; errors: string[] } {
   const errors: string[] = [];
   try {
@@ -323,7 +332,7 @@ export function ImportView({ onRefresh, onImport, onDataImported }: ImportViewPr
   };
 
   return (
-    <div className="space-y-5" style={{ backgroundColor: COLORS.bg, minHeight: "100vh", padding: "24px" }}>
+    <div className="space-y-5" style={{ backgroundColor: COLORS.bg, padding: "16px" }}>
       {/* Header com Glow */}
       <div className="relative rounded-2xl border border-cyan-500/30 bg-cyan-950/20 p-6" style={{ boxShadow: `0_0_30px_${COLORS.neonGlow}` }}>
         <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-cyan-500/5 to-blue-500/5 pointer-events-none" />

@@ -429,13 +429,15 @@ export default function Page() {
         )}
 
         {activeView === "importacao" && (
-          <ImportView
-            onRefresh={() => void loadPdcas()}
-            onImport={() => fileInputRef.current?.click()}
-            onDataImported={(newPdcas) => {
-              setPdcas((prev) => mergePdcaRecords(prev, newPdcas));
-            }}
-          />
+          <div className="min-h-[calc(100vh-120px)]">
+            <ImportView
+              onRefresh={() => void loadPdcas()}
+              onImport={() => fileInputRef.current?.click()}
+              onDataImported={(newPdcas) => {
+                setPdcas((prev) => mergePdcaRecords(prev, newPdcas));
+              }}
+            />
+          </div>
         )}
 
         {activeView === "persistencia" && (
