@@ -11,7 +11,7 @@ import { EvidenceDrawer } from "@/components/pdca/evidence-drawer";
 import { Sidebar } from "@/components/pdca/sidebar";
 import { TopBar } from "@/components/pdca/top-bar";
 import { mapApiPdcas } from "@/lib/pdca-front-mapper";
-import { useAppState } from "@/lib/app-state";
+import { useAppState, useFilteredData } from "@/lib/app-state";
 import { PortfolioView } from "@/components/pdca/portfolio-view";
 import { ImportView } from "@/components/pdca/importacao-view";
 
@@ -112,14 +112,16 @@ function mergePdcaRecords(existing: PdcaRecord[], incoming: PdcaRecord[]): PdcaR
 }
 
 export default function Page() {
-  const { selectedPdcaId, setSelectedPdcaId, selectedSubAction, setSelectedSubAction, activeView } = useAppState();
-  const [pdcas, setPdcas] = useState<PdcaRecord[]>([]);
+  const { selectedPdcaId, setSelectedPdcaId, selectedSubAction, setSelectedSubAction, activeView, setPdcas, pdcas: appPdcas } = useAppState();
+  const { stats: filteredStats, filteredPdcas, filteredSubactions } = useFilteredData();
   const [loading, setLoading] = useState(true);
   const [importing, setImporting] = useState(false);
   const [localMode, setLocalMode] = useState(false);
   const [message, setMessage] = useState("");
   const [logs, setLogs] = useState<ImportLogEntry[]>([]);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  const pdcas = appPdcas;
 
   async function loadPdcas() {
     try {
@@ -162,48 +164,7 @@ export default function Page() {
     void loadPdcas();
   }, []);
 
-  const metricsByPdca = useMemo(() => {
-    const byPdca: Record<string, PdcaComputedMetrics> = {};
-    for (const pdca of pdcas) {
-      byPdca[pdca.id] = computePdcaMetrics(pdca);
-    }
-    return byPdca;
-  }, [pdcas]);
-
-  const stats = useMemo(() => {
-    const allSubactions = pdcas.flatMap((pdca) =>
-      Object.values(pdca.fases)
-        .flat()
-        .flatMap((action) => action.subacoes)
-    );
-
-    const done = allSubactions.filter((subaction) => statusKind(subaction.status) === "done").length;
-    const inProgress = allSubactions.filter((subaction) => statusKind(subaction.status) === "progress").length;
-    const pending = allSubactions.filter((subaction) => statusKind(subaction.status) === "pending").length;
-    const late = allSubactions.filter((subaction) => statusKind(subaction.status) === "late").length;
-    const critical = allSubactions.filter(
-      (subaction) => subaction.gut >= 100 && statusKind(subaction.status) !== "done"
-    ).length;
-    const withEvidence = allSubactions.filter((subaction) => hasValue(subaction.resultado)).length;
-    const pdcaProgressAverage = pdcas.length
-      ? Math.round(
-          pdcas.reduce((acc, pdca) => acc + (metricsByPdca[pdca.id]?.progress ?? 0), 0) / pdcas.length
-        )
-      : 0;
-
-    return {
-      pdcaCount: pdcas.length,
-      subactionCount: allSubactions.length,
-      done,
-      inProgress,
-      pending,
-      late,
-      critical,
-      withEvidence,
-      pdcaProgressAverage,
-      completion: allSubactions.length ? Math.round((done / allSubactions.length) * 100) : 0,
-    };
-  }, [metricsByPdca, pdcas]);
+  const stats = filteredStats;
 
   async function uploadExcelFiles(fileList: FileList | null) {
     const files = Array.from(fileList ?? []).filter((file) => /\.(xlsx|xls)$/i.test(file.name));

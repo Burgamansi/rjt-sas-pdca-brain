@@ -19,7 +19,7 @@ export type AppState = {
   searchTerm: string;
   activeView: PdcaView;
   
-  setPdcas: (pdcas: PdcaRecord[]) => void;
+  setPdcas: (pdcas: PdcaRecord[] | ((prev: PdcaRecord[]) => PdcaRecord[])) => void;
   setSelectedPdcaId: (id: string) => void;
   setSelectedPhase: (phase: PdcaPhase | "all") => void;
   setSelectedFilter: (filter: PdcaFilter) => void;
