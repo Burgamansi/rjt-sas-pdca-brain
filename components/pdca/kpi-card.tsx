@@ -1,4 +1,5 @@
 import { LucideIcon } from "lucide-react";
+import { useAppState, PdcaFilter } from "@/lib/app-state";
 
 type KpiCardProps = {
   title: string;
@@ -6,12 +7,19 @@ type KpiCardProps = {
   subtitle: string;
   gradientClassName: string;
   icon: LucideIcon;
+  filter?: PdcaFilter;
 };
 
-export function KpiCard({ title, value, subtitle, gradientClassName, icon: Icon }: KpiCardProps) {
+export function KpiCard({ title, value, subtitle, gradientClassName, icon: Icon, filter }: KpiCardProps) {
+  const { setSelectedFilter, selectedFilter } = useAppState();
+  const isActive = filter && selectedFilter === filter;
+
   return (
     <article
-      className={`relative overflow-hidden rounded-2xl border border-white/20 p-5 shadow-[0_20px_45px_-25px_rgba(15,23,42,0.65)] ${gradientClassName}`}
+      className={`relative overflow-hidden rounded-2xl border border-white/20 p-5 shadow-[0_20px_45px_-25px_rgba(15,23,42,0.65)] ${gradientClassName} ${
+        filter ? "cursor-pointer hover:scale-[1.02] transition-transform" : ""
+      } ${isActive ? "ring-2 ring-white/50" : ""}`}
+      onClick={() => filter && setSelectedFilter(filter)}
     >
       <div className="absolute -right-6 -top-6 h-20 w-20 rounded-full bg-white/15 blur-xl" />
       <div className="relative flex items-start justify-between gap-4">

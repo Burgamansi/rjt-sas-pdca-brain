@@ -339,6 +339,7 @@ export default function Page() {
             subtitle={`${stats.pending} pendentes`}
             gradientClassName="bg-gradient-to-br from-emerald-500 via-teal-500 to-cyan-600"
             icon={CheckCircle2}
+            filter="done"
           />
           <KpiCard
             title="Em Andamento"
@@ -346,6 +347,7 @@ export default function Page() {
             subtitle={`${stats.late} atrasadas`}
             gradientClassName="bg-gradient-to-br from-amber-500 via-orange-500 to-yellow-500"
             icon={Clock}
+            filter="progress"
           />
           <KpiCard
             title="Atrasadas"
@@ -353,6 +355,7 @@ export default function Page() {
             subtitle={`${stats.critical} criticas`}
             gradientClassName="bg-gradient-to-br from-rose-500 via-red-500 to-orange-600"
             icon={AlertTriangle}
+            filter="late"
           />
           <KpiCard
             title="Efetividade"
@@ -360,6 +363,7 @@ export default function Page() {
             subtitle={`Media: ${stats.pdcaProgressAverage}%`}
             gradientClassName="bg-gradient-to-br from-indigo-500 via-blue-500 to-cyan-500"
             icon={Gauge}
+            filter="all"
           />
         </section>
 

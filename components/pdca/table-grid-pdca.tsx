@@ -1,6 +1,7 @@
 import { Activity, Percent } from "lucide-react";
 import { PdcaPhase, PdcaRecord } from "@/lib/types";
 import { PdcaGridRow, groupByPhase, mapPdcaToGridRows } from "@/lib/pdca-front-mapper";
+import { useAppState } from "@/lib/app-state";
 
 type TableGridPDCAProps = {
   pdcas: PdcaRecord[];
@@ -141,8 +142,24 @@ function progressBarWidth(percent: number): string {
 }
 
 export function TableGridPDCA({ pdcas, selectedPdcaId, onSelectPdca, loading, localMode, onSelectSubAction }: TableGridPDCAProps) {
+  const { selectedFilter, selectedPhase, setSelectedPhase } = useAppState();
   const current = selectedPdca(pdcas, selectedPdcaId);
-  const rows = current ? mapPdcaToGridRows(current) : [];
+  let rows = current ? mapPdcaToGridRows(current) : [];
+  
+  // Aplicar filtros
+  if (selectedPhase !== "all") {
+    rows = rows.filter(row => row.phase === selectedPhase);
+  }
+  if (selectedFilter !== "all") {
+    const statusMap: Record<string, string> = {
+      done: "conclu",
+      progress: "exec",
+      late: "atras",
+      pending: "pendente"
+    };
+    rows = rows.filter(row => row.status.toLowerCase().includes(statusMap[selectedFilter]));
+  }
+  
   const groupedRows = groupByPhase(rows);
 
   return (
@@ -173,15 +190,30 @@ export function TableGridPDCA({ pdcas, selectedPdcaId, onSelectPdca, loading, lo
       </div>
 
       <div className="mb-4 flex flex-wrap gap-2 text-xs">
-        {(Object.keys(phaseStyle) as PdcaPhase[]).map((phase) => (
-          <span
+        {(["plan", "do", "check", "act"] as PdcaPhase[]).map((phase) => (
+          <button
             key={phase}
-            className={`inline-flex items-center gap-2 rounded-full border px-2.5 py-1 font-medium ${phaseStyle[phase].chip}`}
+            onClick={() => setSelectedPhase(selectedPhase === phase ? "all" : phase)}
+            className={`inline-flex items-center gap-2 rounded-full border px-2.5 py-1 font-medium ${
+              selectedPhase === phase 
+                ? "ring-2 ring-white/50 " + phaseStyle[phase].chip 
+                : phaseStyle[phase].chip
+            } hover:opacity-80 transition-all`}
           >
             <span className={`h-2 w-2 rounded-full ${phaseStyle[phase].bar}`} />
             {phaseStyle[phase].label}
-          </span>
+          </button>
         ))}
+        <button
+          onClick={() => setSelectedPhase("all")}
+          className={`inline-flex items-center gap-2 rounded-full border px-2.5 py-1 font-medium ${
+            selectedPhase === "all"
+              ? "ring-2 ring-white/50 border-slate-400 bg-slate-700 text-white"
+              : "border-slate-600 bg-slate-800 text-slate-400 hover:text-white"
+          } hover:opacity-80 transition-all`}
+        >
+          Todos
+        </button>
       </div>
 
       {loading ? <p className="rounded-xl border border-slate-700/60 bg-slate-900/45 p-4 text-sm text-slate-300">Carregando dados...</p> : null}

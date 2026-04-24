@@ -1,6 +1,7 @@
 import "./globals.css";
 import type { Metadata } from "next";
 import { ReactNode } from "react";
+import { AppStateProvider } from "@/lib/app-state";
 
 export const metadata: Metadata = {
   title: "RJT SAS PDCA Brain",
@@ -10,7 +11,11 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="pt-BR">
-      <body>{children}</body>
+      <body>
+        <AppStateProvider>
+          {children}
+        </AppStateProvider>
+      </body>
     </html>
   );
 }
