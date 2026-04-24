@@ -13,6 +13,7 @@ import { TopBar } from "@/components/pdca/top-bar";
 import { mapApiPdcas } from "@/lib/pdca-front-mapper";
 import { useAppState } from "@/lib/app-state";
 import { PortfolioView } from "@/components/pdca/portfolio-view";
+import { ImportView } from "@/components/pdca/importacao-view";
 
 type PdcaComputedMetrics = {
   totalSubactions: number;
@@ -459,16 +460,15 @@ export default function Page() {
         )}
 
         {activeView === "importacao" && (
-          <section className="mt-6 rounded-3xl border border-white/10 bg-white/[0.03] p-5">
-            <h3 className="text-lg font-semibold text-slate-100">Importacao Excel</h3>
-            <p className="mt-1 text-sm text-slate-400">Carregar planilhas PDCAs para analise.</p>
-            <button
-              onClick={() => fileInputRef.current?.click()}
-              className="mt-4 rounded-lg bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700"
-            >
-              Selecionar arquivo Excel
-            </button>
-          </section>
+          <div className="rounded-2xl bg-slate-50 p-6 min-h-[calc(100vh-120px)]">
+            <ImportView
+              onRefresh={() => void loadPdcas()}
+              onImport={() => fileInputRef.current?.click()}
+              onDataImported={(newPdcas) => {
+                setPdcas((prev) => mergePdcaRecords(prev, newPdcas));
+              }}
+            />
+          </div>
         )}
 
         {activeView === "persistencia" && (
