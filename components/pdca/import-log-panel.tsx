@@ -26,15 +26,16 @@ export function ImportLogPanel({ logs, formatDate }: ImportLogPanelProps) {
         {logs.map((entry, index) => (
           <article
             key={`${entry.when}-${entry.file}-${index}`}
-            className={`rounded-xl border px-3 py-2 text-xs ${
-              entry.ok
-                ? "border-emerald-400/30 bg-emerald-500/10 text-emerald-100"
-                : "border-amber-400/30 bg-amber-500/10 text-amber-100"
-            }`}
+            className="group rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 shadow-sm transition-colors hover:bg-slate-700"
           >
-            <p className="font-semibold">{entry.ok ? "OK" : "AVISO"} - {entry.file}</p>
-            <p className="mt-1">{entry.message}</p>
-            <p className="mt-1 text-[11px] opacity-80">{formatDate(entry.when)}</p>
+            <div className="flex items-center justify-between gap-2">
+              <p className="font-semibold text-white">{entry.file}</p>
+              <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${entry.ok ? "bg-emerald-500 text-white" : "bg-amber-500 text-white"}`}>
+                {entry.ok ? "OK" : "AVISO"}
+              </span>
+            </div>
+            <p className="mt-1 text-sm text-slate-300">{entry.message}</p>
+            <p className="mt-1 text-xs text-slate-400">{formatDate(entry.when)}</p>
           </article>
         ))}
       </div>
