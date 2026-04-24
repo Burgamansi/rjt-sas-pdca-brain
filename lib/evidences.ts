@@ -1,0 +1,83 @@
+import { createClient } from "@supabase/supabase-js";
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
+
+export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+
+export type Evidence = {
+  id: string;
+  company_id: string;
+  pdca_id: string;
+  sub_action_id: string;
+  file_name: string;
+  file_type: string;
+  file_url: string | null;
+  file_size: number | null;
+  uploaded_by: string | null;
+  created_at: string;
+};
+
+export async function fetchEvidences(
+  pdcaId: string,
+  subActionId: string
+): Promise<Evidence[]> {
+  if (!supabase) return [];
+
+  const { data, error } = await supabase
+    .from("pdca_evidences")
+    .select("*")
+    .eq("pdca_id", pdcaId)
+    .eq("sub_action_id", subActionId)
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    console.error("Error fetching evidences:", error);
+    return [];
+  }
+
+  return data || [];
+}
+
+export async function uploadEvidence(
+  pdcaId: string,
+  subActionId: string,
+  file: File
+): Promise<Evidence | null> {
+  if (!supabase) return null;
+
+  const fileType = file.name.split(".").pop() || "";
+  const fileName = file.name;
+
+  const { data, error } = await supabase
+    .from("pdca_evidences")
+    .insert({
+      pdca_id: pdcaId,
+      sub_action_id: subActionId,
+      file_name: fileName,
+      file_type: fileType,
+      file_size: file.size,
+    })
+    .select()
+    .single();
+
+  if (error) {
+    console.error("Error uploading evidence:", error);
+    return null;
+  }
+
+  return data;
+}
+
+export async function deleteEvidence(id: string): Promise<boolean> {
+  if (!supabase) return false;
+
+  const { error } = await supabase.from("pdca_evidences").delete().eq("id", id);
+
+  if (error) {
+    console.error("Error deleting evidence:", error);
+    return false;
+  }
+
+  return true;
+}

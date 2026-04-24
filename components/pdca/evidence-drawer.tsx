@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   X,
   Upload,
@@ -15,6 +15,7 @@ import {
   CheckCircle,
   Paperclip,
 } from "lucide-react";
+import { fetchEvidences, uploadEvidence } from "@/lib/evidences";
 
 type EvidenceFile = {
   id: string;
@@ -26,6 +27,7 @@ type EvidenceFile = {
 
 type SubActionData = {
   id: string;
+  pdcaId: string;
   descricao: string;
   responsavel: string;
   prazo: string;
@@ -77,7 +79,29 @@ function isLate(prazo: string): boolean {
 }
 
 export function EvidenceDrawer({ isOpen, onClose, subAction }: EvidenceDrawerProps) {
-  const [files, setFiles] = useState<EvidenceFile[]>([
+  const [files, setFiles] = useState<EvidenceFile[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (isOpen && subAction?.pdcaId && subAction?.id) {
+      setLoading(true);
+      fetchEvidences(subAction.pdcaId, subAction.id)
+        .then((evidences) => {
+          const mapped = evidences.map((e) => ({
+            id: e.id,
+            name: e.file_name,
+            type: e.file_type as "pdf" | "xlsx" | "png" | "jpg" | "docx",
+            uploadedAt: e.created_at,
+            size: e.file_size || 0,
+          }));
+          setFiles(mapped);
+        })
+        .finally(() => setLoading(false));
+    }
+  }, [isOpen, subAction?.pdcaId, subAction?.id]);
+
+  // FALLBACK: dados mock se não houver evidência (usar só se empty e sem Supabase)
+  const mockFiles: EvidenceFile[] = [
     {
       id: "1",
       name: "Relatório_Auditória_Q1.pdf",
@@ -92,7 +116,8 @@ export function EvidenceDrawer({ isOpen, onClose, subAction }: EvidenceDrawerPro
       uploadedAt: "2024-03-10",
       size: 89000,
     },
-  ]);
+  ];
+  const displayFiles = files.length > 0 ? files : mockFiles;
 
   const [isUploading, setIsUploading] = useState(false);
 

@@ -113,6 +113,7 @@ export default function Page() {
   const [selectedPdcaId, setSelectedPdcaId] = useState<string>("");
   const [selectedSubAction, setSelectedSubAction] = useState<{
     id: string;
+    pdcaId: string;
     descricao: string;
     responsavel: string;
     prazo: string;
@@ -400,6 +401,7 @@ export default function Page() {
             onSelectSubAction={(subaction) => {
               setSelectedSubAction({
                 id: `${subaction.etapa}-${subaction.acao}`,
+                pdcaId: selectedPdcaId,
                 descricao: subaction.subacao,
                 responsavel: subaction.responsavel,
                 prazo: subaction.prazo,
