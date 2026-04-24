@@ -353,6 +353,34 @@ export default function Page() {
           />
         </section>
 
+        <section className="mt-6 rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <h3 className="text-sm font-medium text-slate-300">Progresso Geral do PDCA</h3>
+              <p className="mt-1 text-xs text-slate-500">{stats.done} de {stats.subactionCount} subações concluídas</p>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="h-3 w-48 rounded-full bg-slate-700 overflow-hidden">
+                <div
+                  className={`h-full rounded-full transition-all duration-500 ${
+                    stats.completion >= 90 ? "bg-emerald-500" :
+                    stats.completion >= 70 ? "bg-amber-500" :
+                    "bg-rose-500"
+                  }`}
+                  style={{ width: `${stats.completion}%` }}
+                />
+              </div>
+              <span className={`text-lg font-semibold ${
+                stats.completion >= 90 ? "text-emerald-400" :
+                stats.completion >= 70 ? "text-amber-400" :
+                "text-rose-400"
+              }`}>
+                {stats.completion}%
+              </span>
+            </div>
+          </div>
+        </section>
+
         <section className="mt-6 grid gap-5 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
           <TableGridPDCA
             pdcas={pdcas}
