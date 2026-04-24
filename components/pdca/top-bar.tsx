@@ -97,7 +97,7 @@ export function TopBar({ importing, loading, localMode, onRefresh, onOpenImport 
               className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#1B9BEE] to-[#0066B3] px-4 py-2 text-sm font-semibold text-white shadow-[0_0_18px_rgba(27,155,238,0.3)] transition-all hover:from-[#C3E6FF] hover:to-[#1B9BEE] hover:shadow-[0_0_24px_rgba(27,155,238,0.45)] disabled:opacity-40"
             >
               <Upload className="h-4 w-4" />
-              {importing ? "Importando..." : "Importar Excel / DOCX"}
+              {importing ? "Importando..." : "Importar Excel / DOCX / PDF"}
             </button>
           </div>
         </div>

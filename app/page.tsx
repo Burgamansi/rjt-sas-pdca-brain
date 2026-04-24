@@ -174,7 +174,7 @@ export default function Page() {
   const stats = filteredStats;
 
   async function uploadExcelFiles(fileList: FileList | null) {
-    const files = Array.from(fileList ?? []).filter((file) => /\.(xlsx|xls|docx)$/i.test(file.name));
+    const files = Array.from(fileList ?? []).filter((file) => /\.(xlsx|xls|docx|pdf)$/i.test(file.name));
     if (!files.length) return;
 
     setImporting(true);
@@ -186,17 +186,25 @@ export default function Page() {
     for (const file of files) {
       try {
         let pdca: PdcaRecord;
-        if (/\.docx$/i.test(file.name)) {
+        if (/\.(docx|pdf)$/i.test(file.name)) {
+          const endpoint = /\.pdf$/i.test(file.name) ? "/api/parse-pdf" : "/api/parse-docx";
           const form = new FormData();
           form.append("file", file);
-          const res = await fetch("/api/parse-docx", { method: "POST", body: form });
-          const payload = (await res.json()) as { ok: boolean; pdca?: PdcaRecord; message?: string; rowCount?: number };
-          if (!payload.ok || !payload.pdca) throw new Error(payload.message ?? "Falha ao processar DOCX.");
+          const res = await fetch(endpoint, { method: "POST", body: form });
+          const payload = (await res.json()) as {
+            ok: boolean; pdca?: PdcaRecord; message?: string; rowCount?: number;
+            extractedText?: boolean; preview?: { hasTabela: boolean; detectedId: string | null; charCount: number; sampleLines: string[] }; suggestion?: string;
+          };
+          if (!payload.ok || !payload.pdca) {
+            const detail = payload.suggestion ? ` — ${payload.suggestion}` : "";
+            throw new Error((payload.message ?? "Falha ao processar arquivo.") + detail);
+          }
           pdca = payload.pdca;
+          const ext = file.name.toLowerCase().endsWith(".pdf") ? "PDF" : "DOCX";
           importResults.push({
             ok: true,
             file: file.name,
-            message: `PDCA ${pdca.id} importado via DOCX (${payload.rowCount} subações).`,
+            message: `PDCA ${pdca.id} importado via ${ext} (${payload.rowCount} subações).`,
             pdca,
           });
         } else {
@@ -282,7 +290,7 @@ export default function Page() {
           ref={fileInputRef}
           hidden
           type="file"
-          accept=".xlsx,.xls,.docx"
+          accept=".xlsx,.xls,.docx,.pdf"
           multiple
           onChange={async (event) => {
             await uploadExcelFiles(event.target.files);
