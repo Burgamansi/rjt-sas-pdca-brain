@@ -45,23 +45,47 @@ const steps: { key: Step; label: string }[] = [
   { key: "sincronizacao", label: "Sincronização" }
 ];
 
+function safeString(value: unknown): string {
+  if (value === null || value === undefined) return "";
+  try {
+    return String(value).trim();
+  } catch {
+    return "";
+  }
+}
+
+function safeUpper(value: unknown): string {
+  const str = safeString(value);
+  try {
+    return str.toUpperCase();
+  } catch {
+    return "";
+  }
+}
+
+function safeGetField(row: unknown[], idx: number): string {
+  if (!Array.isArray(row)) return "";
+  const val = row[idx];
+  return safeString(val);
+}
+
 function parseExcelToRecords(buffer: ArrayBuffer): { rows: ParsedRow[]; errors: string[] } {
   const errors: string[] = [];
   try {
     const workbook = XLSX.read(buffer, { type: "array" });
     const sheetName = workbook.SheetNames[0];
     const sheet = workbook.Sheets[sheetName];
-    const data = XLSX.utils.sheet_to_json(sheet, { header: 1 }) as any[][];
+    const data = XLSX.utils.sheet_to_json(sheet, { header: 1 }) as unknown[][];
     
     if (!data || data.length < 2) {
       errors.push("Arquivo vazio ou sem dados");
       return { rows: [], errors };
     }
 
-    const headerRow = data[0].map((h: any) => String(h || "").toUpperCase().trim());
+    const headerRow = data[0].map((h) => safeUpper(h));
     const findColumn = (patterns: string[]): number => {
       for (const p of patterns) {
-        const idx = headerRow.findIndex((h: string) => h.includes(p));
+        const idx = headerRow.findIndex((h) => h.includes(p));
         if (idx !== -1) return idx;
       }
       return -1;
@@ -78,9 +102,9 @@ function parseExcelToRecords(buffer: ArrayBuffer): { rows: ParsedRow[]; errors: 
     const rows: ParsedRow[] = [];
     for (let i = 1; i < data.length; i++) {
       const row = data[i];
-      if (!row || row.length === 0) continue;
+      if (!row || !Array.isArray(row)) continue;
 
-      const faseRaw = faseIdx !== -1 ? String(row[faseIdx] || "").toUpperCase().trim() : "";
+      const faseRaw = faseIdx !== -1 ? safeUpper(row[faseIdx]) : "";
       let fase: PdcaPhase = "plan";
       if (faseRaw.includes("DO") || faseRaw.includes("EXE")) fase = "do";
       else if (faseRaw.includes("CHECK") || faseRaw.includes("VER")) fase = "check";
@@ -88,13 +112,13 @@ function parseExcelToRecords(buffer: ArrayBuffer): { rows: ParsedRow[]; errors: 
       else if (faseRaw.includes("PLAN") || faseRaw.includes("PLA")) fase = "plan";
 
       rows.push({
-        pdca: pdcaIdx !== -1 ? String(row[pdcaIdx] || "").trim() : "",
+        pdca: pdcaIdx !== -1 ? safeGetField(row, pdcaIdx) : "",
         fase,
-        acao: acaoIdx !== -1 ? String(row[acaoIdx] || "").trim() : "",
-        subacao: subacaoIdx !== -1 ? String(row[subacaoIdx] || "").trim() : "",
-        responsavel: respIdx !== -1 ? String(row[respIdx] || "").trim() : "",
-        prazo: prazoIdx !== -1 ? String(row[prazoIdx] || "").trim() : "",
-        status: statusIdx !== -1 ? String(row[statusIdx] || "").trim() : "Pendente"
+        acao: acaoIdx !== -1 ? safeGetField(row, acaoIdx) : "",
+        subacao: subacaoIdx !== -1 ? safeGetField(row, subacaoIdx) : "",
+        responsavel: respIdx !== -1 ? safeGetField(row, respIdx) : "",
+        prazo: prazoIdx !== -1 ? safeGetField(row, prazoIdx) : "",
+        status: statusIdx !== -1 ? (safeGetField(row, statusIdx) || "Pendente") : "Pendente"
       });
     }
 
