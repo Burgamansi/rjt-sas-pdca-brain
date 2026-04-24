@@ -281,6 +281,7 @@ export default function Page() {
               subtitle="Portfolio consolidado"
               gradientClassName="bg-gradient-to-br from-sky-500 via-blue-500 to-indigo-600"
               icon={Layers3}
+              filter="all"
             />
             <KpiCard
               title="Subacoes"
@@ -288,6 +289,7 @@ export default function Page() {
               subtitle={`${stats.inProgress} em execucao`}
               gradientClassName="bg-gradient-to-br from-violet-500 via-fuchsia-500 to-indigo-600"
               icon={ListChecks}
+              filter="all"
             />
             <KpiCard
               title="Concluidas"

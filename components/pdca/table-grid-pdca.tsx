@@ -142,11 +142,19 @@ function progressBarWidth(percent: number): string {
 }
 
 export function TableGridPDCA({ pdcas, selectedPdcaId, onSelectPdca, loading, localMode, onSelectSubAction }: TableGridPDCAProps) {
-  const { selectedFilter, selectedPhase, setSelectedPhase } = useAppState();
+  const { selectedFilter, selectedPhase, setSelectedPhase, searchTerm } = useAppState();
   const current = selectedPdca(pdcas, selectedPdcaId);
   let rows = current ? mapPdcaToGridRows(current) : [];
   
-  // Aplicar filtros
+  // Aplicar filtros mestres
+  if (searchTerm) {
+    const term = searchTerm.toLowerCase();
+    rows = rows.filter(row => 
+      row.subacao.toLowerCase().includes(term) ||
+      row.acao.toLowerCase().includes(term) ||
+      row.responsavel.toLowerCase().includes(term)
+    );
+  }
   if (selectedPhase !== "all") {
     rows = rows.filter(row => row.phase === selectedPhase);
   }
