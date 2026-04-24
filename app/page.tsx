@@ -447,7 +447,7 @@ export default function Page() {
         )}
 
         {activeView === "portfolio" && (
-          <div className="rounded-2xl bg-slate-50 p-6">
+          <div className="rounded-2xl bg-slate-50 p-6 min-h-[calc(100vh-120px)]">
             <PortfolioView
               pdcas={pdcas}
               selectedPdcaId={selectedPdcaId}
