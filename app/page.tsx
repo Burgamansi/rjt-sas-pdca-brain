@@ -460,11 +460,12 @@ export default function Page() {
         )}
 
         {activeView === "importacao" && (
-          <div className="rounded-2xl bg-slate-50 p-6 min-h-[calc(100vh-120px)]">
+          <div className="bg-slate-50 p-6" style={{ minHeight: "calc(100vh - 80px)" }}>
             <ImportView
               onRefresh={() => void loadPdcas()}
               onImport={() => fileInputRef.current?.click()}
               onDataImported={(newPdcas) => {
+                console.log("Data imported:", newPdcas.length);
                 setPdcas((prev) => mergePdcaRecords(prev, newPdcas));
               }}
             />
