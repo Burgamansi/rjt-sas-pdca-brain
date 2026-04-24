@@ -1,9 +1,26 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { FileSpreadsheet, Layers, RefreshCcw, Upload } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Clock, Gauge, Layers3, ListChecks } from "lucide-react";
 import { parsePdcaWorkbookFromArrayBuffer } from "@/lib/pdca-parser";
 import { PdcaImportResult, PdcaRecord } from "@/lib/types";
+import { ImportLogPanel } from "@/components/pdca/import-log-panel";
+import { KpiCard } from "@/components/pdca/kpi-card";
+import { TableGridPDCA } from "@/components/pdca/table-grid-pdca";
+import { Sidebar } from "@/components/pdca/sidebar";
+import { TopBar } from "@/components/pdca/top-bar";
+import { mapApiPdcas } from "@/lib/pdca-front-mapper";
+
+type PdcaComputedMetrics = {
+  totalSubactions: number;
+  doneCount: number;
+  progressCount: number;
+  pendingCount: number;
+  criticalCount: number;
+  withDeadline: number;
+  withEvidence: number;
+  progress: number;
+};
 
 type ImportLogEntry = {
   when: string;
@@ -20,10 +37,11 @@ function normalizeText(value: unknown): string {
     .trim();
 }
 
-function statusKind(status: string): "done" | "progress" | "pending" {
+function statusKind(status: string): "done" | "progress" | "pending" | "late" {
   const text = normalizeText(status);
   if (text.includes("conclu")) return "done";
   if (text.includes("execu") || text.includes("aberto") || text.includes("aguard")) return "progress";
+  if (text.includes("atras")) return "late";
   return "pending";
 }
 
@@ -37,6 +55,43 @@ function formatDate(value: string): string {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "--";
   return new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short" }).format(date);
+}
+
+function pdcaSubactions(pdca: PdcaRecord) {
+  return Object.values(pdca.fases)
+    .flat()
+    .flatMap((action) => action.subacoes);
+}
+
+function hasValue(value: string | undefined): boolean {
+  const trimmed = String(value ?? "").trim();
+  if (!trimmed) return false;
+  const normalized = normalizeText(trimmed);
+  return normalized !== "n/a" && normalized !== "na" && normalized !== "0";
+}
+
+function computePdcaMetrics(pdca: PdcaRecord): PdcaComputedMetrics {
+  const subactions = pdcaSubactions(pdca);
+  const doneCount = subactions.filter((subaction) => statusKind(subaction.status) === "done").length;
+  const progressCount = subactions.filter((subaction) => statusKind(subaction.status) === "progress").length;
+  const pendingCount = subactions.filter((subaction) => statusKind(subaction.status) === "pending").length;
+  const criticalCount = subactions.filter(
+    (subaction) => subaction.gut >= 100 && statusKind(subaction.status) !== "done"
+  ).length;
+  const withDeadline = subactions.filter((subaction) => hasValue(subaction.meta)).length;
+  const withEvidence = subactions.filter((subaction) => hasValue(subaction.resultado)).length;
+  const progress = subactions.length ? Math.round((doneCount / subactions.length) * 100) : 0;
+
+  return {
+    totalSubactions: subactions.length,
+    doneCount,
+    progressCount,
+    pendingCount,
+    criticalCount,
+    withDeadline,
+    withEvidence,
+    progress,
+  };
 }
 
 function isSupabaseEnvMissing(message: string | undefined): boolean {
@@ -80,9 +135,10 @@ export default function Page() {
       }
 
       setLocalMode(false);
-      setPdcas(payload.pdcas ?? []);
-      if (!selectedPdcaId && payload.pdcas?.length) {
-        setSelectedPdcaId(payload.pdcas[0].id);
+      const normalizedPdcas = mapApiPdcas(payload.pdcas ?? []);
+      setPdcas(normalizedPdcas);
+      if (!selectedPdcaId && normalizedPdcas.length) {
+        setSelectedPdcaId(normalizedPdcas[0].id);
       }
       setLoading(false);
     } catch {
@@ -102,9 +158,13 @@ export default function Page() {
     void loadPdcas();
   }, []);
 
-  const selectedPdca = useMemo(() => {
-    return pdcas.find((pdca) => pdca.id === selectedPdcaId) ?? null;
-  }, [pdcas, selectedPdcaId]);
+  const metricsByPdca = useMemo(() => {
+    const byPdca: Record<string, PdcaComputedMetrics> = {};
+    for (const pdca of pdcas) {
+      byPdca[pdca.id] = computePdcaMetrics(pdca);
+    }
+    return byPdca;
+  }, [pdcas]);
 
   const stats = useMemo(() => {
     const allSubactions = pdcas.flatMap((pdca) =>
@@ -112,19 +172,34 @@ export default function Page() {
         .flat()
         .flatMap((action) => action.subacoes)
     );
+
     const done = allSubactions.filter((subaction) => statusKind(subaction.status) === "done").length;
+    const inProgress = allSubactions.filter((subaction) => statusKind(subaction.status) === "progress").length;
+    const pending = allSubactions.filter((subaction) => statusKind(subaction.status) === "pending").length;
+    const late = allSubactions.filter((subaction) => statusKind(subaction.status) === "late").length;
     const critical = allSubactions.filter(
       (subaction) => subaction.gut >= 100 && statusKind(subaction.status) !== "done"
     ).length;
+    const withEvidence = allSubactions.filter((subaction) => hasValue(subaction.resultado)).length;
+    const pdcaProgressAverage = pdcas.length
+      ? Math.round(
+          pdcas.reduce((acc, pdca) => acc + (metricsByPdca[pdca.id]?.progress ?? 0), 0) / pdcas.length
+        )
+      : 0;
 
     return {
       pdcaCount: pdcas.length,
       subactionCount: allSubactions.length,
       done,
+      inProgress,
+      pending,
+      late,
       critical,
+      withEvidence,
+      pdcaProgressAverage,
       completion: allSubactions.length ? Math.round((done / allSubactions.length) * 100) : 0,
     };
-  }, [pdcas]);
+  }, [metricsByPdca, pdcas]);
 
   async function uploadExcelFiles(fileList: FileList | null) {
     const files = Array.from(fileList ?? []).filter((file) => /\.(xlsx|xls)$/i.test(file.name));
@@ -198,167 +273,119 @@ export default function Page() {
   }
 
   return (
-    <main className="container">
-      <div className="row" style={{ justifyContent: "space-between", alignItems: "center", marginBottom: 22 }}>
-        <h1 className="title">
-          <Layers size={34} />
-          PDCA Brain
-        </h1>
-        <div className="row">
-          <button className="btn ghost" onClick={() => void loadPdcas()} disabled={loading}>
-            <RefreshCcw size={16} style={{ marginRight: 6 }} />
-            Atualizar
-          </button>
-          <button className="btn primary" onClick={() => fileInputRef.current?.click()} disabled={importing}>
-            <Upload size={16} style={{ marginRight: 6 }} />
-            {importing ? "Importando..." : "Importar Excel"}
-          </button>
-          <input
-            ref={fileInputRef}
-            hidden
-            type="file"
-            accept=".xlsx,.xls"
-            multiple
-            onChange={async (event) => {
-              await uploadExcelFiles(event.target.files);
-              event.target.value = "";
-            }}
+    <div className="min-h-screen bg-[radial-gradient(circle_at_18%_12%,rgba(56,189,248,0.16),transparent_32%),radial-gradient(circle_at_82%_4%,rgba(129,140,248,0.18),transparent_30%),#020617] text-slate-100">
+      <Sidebar
+        pdcaCount={stats.pdcaCount}
+        subactionCount={stats.subactionCount}
+        doneCount={stats.done}
+        completion={stats.completion}
+        localMode={localMode}
+      />
+
+      <main className="mx-auto max-w-[1600px] px-4 py-5 lg:pl-80 lg:pr-8">
+        <TopBar
+          importing={importing}
+          loading={loading}
+          localMode={localMode}
+          onRefresh={() => void loadPdcas()}
+          onOpenImport={() => fileInputRef.current?.click()}
+        />
+        <input
+          ref={fileInputRef}
+          hidden
+          type="file"
+          accept=".xlsx,.xls"
+          multiple
+          onChange={async (event) => {
+            await uploadExcelFiles(event.target.files);
+            event.target.value = "";
+          }}
+        />
+
+        {message ? (
+          <section className="mt-4 rounded-2xl border border-cyan-300/20 bg-cyan-500/10 px-4 py-3 text-sm text-cyan-100">
+            {message}
+          </section>
+        ) : null}
+
+        <section className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+          <KpiCard
+            title="PDCAs Ativos"
+            value={String(stats.pdcaCount)}
+            subtitle="Portfolio consolidado"
+            gradientClassName="bg-gradient-to-br from-sky-500 via-blue-500 to-indigo-600"
+            icon={Layers3}
           />
-        </div>
-      </div>
+          <KpiCard
+            title="Subacoes"
+            value={String(stats.subactionCount)}
+            subtitle={`${stats.inProgress} em execucao`}
+            gradientClassName="bg-gradient-to-br from-violet-500 via-fuchsia-500 to-indigo-600"
+            icon={ListChecks}
+          />
+          <KpiCard
+            title="Concluidas"
+            value={String(stats.done)}
+            subtitle={`${stats.pending} pendentes`}
+            gradientClassName="bg-gradient-to-br from-emerald-500 via-teal-500 to-cyan-600"
+            icon={CheckCircle2}
+          />
+          <KpiCard
+            title="Em Andamento"
+            value={String(stats.inProgress)}
+            subtitle={`${stats.late} atrasadas`}
+            gradientClassName="bg-gradient-to-br from-amber-500 via-orange-500 to-yellow-500"
+            icon={Clock}
+          />
+          <KpiCard
+            title="Atrasadas"
+            value={String(stats.late)}
+            subtitle={`${stats.critical} criticas`}
+            gradientClassName="bg-gradient-to-br from-rose-500 via-red-500 to-orange-600"
+            icon={AlertTriangle}
+          />
+          <KpiCard
+            title="Efetividade"
+            value={`${stats.completion}%`}
+            subtitle={`Media: ${stats.pdcaProgressAverage}%`}
+            gradientClassName="bg-gradient-to-br from-indigo-500 via-blue-500 to-cyan-500"
+            icon={Gauge}
+          />
+        </section>
 
-      <section className="panel" style={{ marginBottom: 14 }}>
-        <div className="row" style={{ justifyContent: "space-between", alignItems: "center" }}>
-          <div>
-            <div style={{ fontWeight: 700 }}>Arquitetura ativa</div>
-            <div className="muted" style={{ fontSize: 13 }}>
-              GitHub + Vercel + Supabase como cerebro central do projeto.
-            </div>
-          </div>
-          <div className="row muted" style={{ alignItems: "center", fontWeight: 600, fontSize: 13 }}>
-            <FileSpreadsheet size={16} />
-            Upload incremental por atualizacao
-          </div>
-        </div>
-        {message ? <p style={{ margin: "10px 0 0", fontWeight: 700 }}>{message}</p> : null}
-      </section>
+        <section className="mt-6 grid gap-5 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+          <TableGridPDCA
+            pdcas={pdcas}
+            selectedPdcaId={selectedPdcaId}
+            onSelectPdca={setSelectedPdcaId}
+            loading={loading}
+            localMode={localMode}
+          />
 
-      <section className="kpi-grid" style={{ marginBottom: 14 }}>
-        <article className="kpi">
-          <div className="label">PDCAs</div>
-          <div className="value">{stats.pdcaCount}</div>
-        </article>
-        <article className="kpi">
-          <div className="label">Subacoes</div>
-          <div className="value">{stats.subactionCount}</div>
-        </article>
-        <article className="kpi">
-          <div className="label">Concluidas</div>
-          <div className="value">{stats.done}</div>
-        </article>
-        <article className="kpi">
-          <div className="label">Criticas GUT</div>
-          <div className="value">{stats.critical}</div>
-        </article>
-        <article className="kpi">
-          <div className="label">Eficacia</div>
-          <div className="value">{stats.completion}%</div>
-        </article>
-      </section>
-
-      <section className="row" style={{ alignItems: "flex-start" }}>
-        <div className="panel" style={{ flex: 1, minWidth: 340 }}>
-          <h2 style={{ marginTop: 0 }}>Portfolio PDCA</h2>
-          {loading ? <p className="muted">Carregando...</p> : null}
-          {!loading && !pdcas.length ? (
-            <p className="muted">
-              {localMode ? "Sem PDCAs carregados nesta sessao local." : "Ainda sem PDCAs sincronizados no Supabase."}
-            </p>
-          ) : null}
-          <div className="pdca-list">
-            {pdcas.map((pdca) => (
-              <article key={pdca.id} className="pdca-card">
-                <div className="row" style={{ justifyContent: "space-between", alignItems: "center" }}>
-                  <strong>PDCA {pdca.id}</strong>
-                  <span className={`badge ${statusKind(pdca.status)}`}>{pdca.status}</span>
+          <div className="space-y-5">
+            <section className="rounded-3xl border border-white/10 bg-white/[0.03] p-5 shadow-[0_28px_55px_-35px_rgba(15,23,42,0.9)]">
+              <h3 className="text-lg font-semibold text-slate-100">Leituras Executivas</h3>
+              <p className="mt-1 text-sm text-slate-400">Sintese dinamica com base nas subacoes do portifolio atual.</p>
+              <div className="mt-4 space-y-2 text-sm text-slate-200">
+                <div className="rounded-xl border border-slate-700/80 bg-slate-900/70 px-3 py-2">
+                  {stats.withEvidence} subacoes com evidencia registrada.
                 </div>
-                <h3 style={{ marginBottom: 8 }}>{pdca.titulo}</h3>
-                <p className="muted" style={{ margin: "0 0 8px", fontSize: 13 }}>
-                  {pdca.area}
-                </p>
-                <p className="muted" style={{ margin: "0 0 10px", fontSize: 12 }}>
-                  Atualizado: {formatDate(pdca.atualizadoEm)}
-                </p>
-                <button className="btn" onClick={() => setSelectedPdcaId(pdca.id)}>
-                  Abrir plano
-                </button>
-              </article>
-            ))}
-          </div>
-        </div>
-
-        <div className="panel" style={{ flex: 1, minWidth: 340 }}>
-          <h2 style={{ marginTop: 0 }}>Detalhe</h2>
-          {!selectedPdca ? (
-            <p className="muted">Selecione um PDCA para visualizar os dados.</p>
-          ) : (
-            <>
-              <h3 style={{ margin: "0 0 6px" }}>
-                PDCA {selectedPdca.id} - {selectedPdca.titulo}
-              </h3>
-              <p className="muted" style={{ marginTop: 0, marginBottom: 12 }}>
-                Fonte: {selectedPdca.fonteArquivo || "--"}
-              </p>
-              <table className="table">
-                <thead>
-                  <tr>
-                    <th>Fase</th>
-                    <th>Acao</th>
-                    <th>Subacao</th>
-                    <th>Resp</th>
-                    <th>GUT</th>
-                    <th>Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {(["plan", "do", "check", "act"] as const).flatMap((phase) =>
-                    selectedPdca.fases[phase].flatMap((action) =>
-                      action.subacoes.map((subaction) => (
-                        <tr key={`${phase}-${action.id}-${subaction.id}`}>
-                          <td>{action.etapa}</td>
-                          <td>{action.acao}</td>
-                          <td>{subaction.nome}</td>
-                          <td>{subaction.resp}</td>
-                          <td>{subaction.gut}</td>
-                          <td>
-                            <span className={`badge ${statusKind(subaction.status)}`}>{subaction.status}</span>
-                          </td>
-                        </tr>
-                      ))
-                    )
-                  )}
-                </tbody>
-              </table>
-            </>
-          )}
-        </div>
-      </section>
-
-      <section className="panel" style={{ marginTop: 14 }}>
-        <h2 style={{ marginTop: 0 }}>Trilha de importacao</h2>
-        <div className="log">
-          {!logs.length ? <p className="muted">Sem eventos de upload nesta sessao.</p> : null}
-          {logs.map((entry, index) => (
-            <article key={`${entry.when}-${entry.file}-${index}`} className={`log-item ${entry.ok ? "ok" : "warn"}`}>
-              <div style={{ fontWeight: 800 }}>
-                {entry.ok ? "OK" : "AVISO"} - {entry.file}
+                <div className="rounded-xl border border-slate-700/80 bg-slate-900/70 px-3 py-2">
+                  {stats.inProgress} subacoes em execucao no ciclo atual.
+                </div>
+                <div className="rounded-xl border border-slate-700/80 bg-slate-900/70 px-3 py-2">
+                  {stats.pending} subacoes pendentes para avancar maturidade.
+                </div>
+                <div className="rounded-xl border border-slate-700/80 bg-slate-900/70 px-3 py-2">
+                  Eficacia global do portifolio: {stats.completion}%.
+                </div>
               </div>
-              <div>{entry.message}</div>
-              <div className="muted">{formatDate(entry.when)}</div>
-            </article>
-          ))}
-        </div>
-      </section>
-    </main>
+            </section>
+
+            <ImportLogPanel logs={logs} formatDate={formatDate} />
+          </div>
+        </section>
+      </main>
+    </div>
   );
 }
