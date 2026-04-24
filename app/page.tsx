@@ -126,29 +126,34 @@ export default function Page() {
   async function loadPdcas() {
     try {
       setLoading(true);
+      setMessage("");
       const response = await fetch("/api/pdcas", { method: "GET" });
-      const payload = (await response.json()) as { ok: boolean; pdcas?: PdcaRecord[]; message?: string };
+      const payload = (await response.json()) as { ok: boolean; pdcas?: PdcaRecord[]; message?: string; isDemo?: boolean };
 
       if (!response.ok || !payload.ok) {
-        if (isSupabaseEnvMissing(payload.message)) {
-          setLocalMode(true);
-          setMessage("Supabase nao configurado no deploy. Importe e analise os PDCAs em modo local nesta sessao.");
-        } else {
-          setMessage(payload.message ?? "Falha ao buscar dados.");
-        }
+        setMessage(payload.message ?? "Falha ao carregar dados.");
         setLoading(false);
         return;
       }
 
-      setLocalMode(false);
-      const normalizedPdcas = mapApiPdcas(payload.pdcas ?? []);
+      if (payload.isDemo && payload.message) {
+        setLocalMode(true);
+        setMessage(payload.message);
+      } else {
+        setLocalMode(false);
+        setMessage("");
+      }
+
+      const pdcaData = payload.pdcas ?? [];
+      const normalizedPdcas = mapApiPdcas(pdcaData);
       setPdcas(normalizedPdcas);
+      
       if (!selectedPdcaId && normalizedPdcas.length) {
         setSelectedPdcaId(normalizedPdcas[0].id);
       }
       setLoading(false);
     } catch {
-      setMessage("Falha de rede ao carregar dados.");
+      setMessage("Erro de conexão. Tente novamente.");
       setLoading(false);
     }
   }
