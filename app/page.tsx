@@ -14,6 +14,7 @@ import { mapApiPdcas } from "@/lib/pdca-front-mapper";
 import { useAppState, useFilteredData } from "@/lib/app-state";
 import { PortfolioView } from "@/components/pdca/portfolio-view";
 import { ImportView } from "@/components/pdca/importacao-view";
+import { PersistenciaView } from "@/components/pdca/persistencia-view";
 
 type PdcaComputedMetrics = {
   totalSubactions: number;
@@ -428,27 +429,23 @@ export default function Page() {
         )}
 
         {activeView === "importacao" && (
-          <div className="bg-slate-50 p-6" style={{ minHeight: "calc(100vh - 80px)" }}>
-            <ImportView
-              onRefresh={() => void loadPdcas()}
-              onImport={() => fileInputRef.current?.click()}
-              onDataImported={(newPdcas) => {
-                console.log("Data imported:", newPdcas.length);
-                setPdcas((prev) => mergePdcaRecords(prev, newPdcas));
-              }}
-            />
-          </div>
+          <ImportView
+            onRefresh={() => void loadPdcas()}
+            onImport={() => fileInputRef.current?.click()}
+            onDataImported={(newPdcas) => {
+              setPdcas((prev) => mergePdcaRecords(prev, newPdcas));
+            }}
+          />
         )}
 
         {activeView === "persistencia" && (
-          <section className="mt-6 rounded-3xl border border-white/10 bg-white/[0.03] p-5">
-            <h3 className="text-lg font-semibold text-slate-100">Persistencia SGQ</h3>
-            <p className="mt-1 text-sm text-slate-400">
-              {localMode
-                ? "Modo local ativo (sem persistencia)"
-                : "Conectado ao Supabase via API /api/pdcas"}
-            </p>
-          </section>
+          <PersistenciaView
+            pdcas={pdcas}
+            selectedPdcaId={selectedPdcaId}
+            onSelectPdca={setSelectedPdcaId}
+            onRefresh={() => void loadPdcas()}
+            localMode={localMode}
+          />
         )}
       </main>
     </div>

@@ -1,9 +1,22 @@
 "use client";
 
 import { useState, useRef, useCallback } from "react";
-import { Upload, FileSpreadsheet, CheckCircle, XCircle, AlertTriangle, ChevronRight, RefreshCw, Save, X, Layers3, ListChecks, Clock, Gauge } from "lucide-react";
+import { Upload, FileSpreadsheet, CheckCircle, XCircle, AlertTriangle, ChevronRight, RefreshCw, Save, X, Layers3, ListChecks, Clock, Gauge, Info, Database, ArrowRight } from "lucide-react";
 import * as XLSX from "xlsx";
 import { PdcaRecord, PdcaPhase } from "@/lib/types";
+
+const COLORS = {
+  bg: "#0B1220",
+  neon: "#00D4FF",
+  neonSecondary: "#2563EB",
+  neonGlow: "rgba(0, 212, 255, 0.25)",
+  white: "#FFFFFF",
+  gray: "#94A3B8",
+  success: "#10B981",
+  progress: "#F97316",
+  error: "#EF4444",
+  warning: "#FACC15"
+};
 
 type ImportViewProps = {
   onRefresh: () => void;
@@ -30,11 +43,11 @@ const faseLabels: Record<PdcaPhase, string> = {
   act: "ACT"
 };
 
-const faseColors: Record<PdcaPhase, string> = {
-  plan: "bg-blue-500",
-  do: "bg-emerald-500",
-  check: "bg-amber-500",
-  act: "bg-rose-500"
+const faseColors: Record<PdcaPhase, { bg: string; text: string }> = {
+  plan: { bg: "bg-blue-500", text: "text-blue-400" },
+  do: { bg: "bg-emerald-500", text: "text-emerald-400" },
+  check: { bg: "bg-amber-500", text: "text-amber-400" },
+  act: { bg: "bg-rose-500", text: "text-rose-400" }
 };
 
 const steps: { key: Step; label: string }[] = [
@@ -273,71 +286,96 @@ export function ImportView({ onRefresh, onImport, onDataImported }: ImportViewPr
   };
 
   return (
-    <div className="space-y-5">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold text-slate-100">Importação Excel</h2>
-          <p className="mt-1 text-sm text-slate-400">Carregar planilhas PDCAs para análise.</p>
-        </div>
-        <div className="flex gap-3">
-          <button
-            onClick={onRefresh}
-            className="flex items-center gap-2 rounded-lg border border-slate-600 bg-slate-800 px-4 py-2 text-sm font-medium text-slate-300 hover:bg-slate-700"
-          >
-            <RefreshCw className="h-4 w-4" />
-            Atualizar
-          </button>
-          <button
-            onClick={() => fileInputRef.current?.click()}
-            className="flex items-center gap-2 rounded-lg bg-gradient-to-r from-blue-600 to-purple-600 px-4 py-2 text-sm font-medium text-white hover:from-blue-700 hover:to-purple-700"
-          >
-            <Upload className="h-4 w-4" />
-            Importar Excel
-          </button>
+    <div className="space-y-5" style={{ backgroundColor: COLORS.bg, minHeight: "100vh", padding: "24px" }}>
+      {/* Header com Glow */}
+      <div className="relative rounded-2xl border border-cyan-500/30 bg-cyan-950/20 p-6" style={{ boxShadow: `0_0_30px_${COLORS.neonGlow}` }}>
+        <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-cyan-500/5 to-blue-500/5 pointer-events-none" />
+        <div className="relative flex items-center justify-between">
+          <div>
+            <h2 className="text-2xl font-bold" style={{ color: COLORS.neon, textShadow: `0_0_10px_${COLORS.neon}` }}>
+              Importação Inteligente de PDCA
+            </h2>
+            <p className="mt-2 text-sm" style={{ color: COLORS.gray }}>
+              Pipeline de dados → Excel → API → Supabase
+            </p>
+          </div>
+          <div className="flex gap-3">
+            <button
+              onClick={onRefresh}
+              className="flex items-center gap-2 rounded-lg border px-4 py-2 text-sm font-medium transition-all hover:scale-105"
+              style={{ borderColor: COLORS.neon, color: COLORS.neon, backgroundColor: "transparent" }}
+            >
+              <RefreshCw className="h-4 w-4" />
+              Atualizar
+            </button>
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              className="flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium text-white transition-all hover:scale-105"
+              style={{ background: `linear-gradient(135deg, ${COLORS.neon}, ${COLORS.neonSecondary})`, boxShadow: `0_0_20px_${COLORS.neonGlow}` }}
+            >
+              <Upload className="h-4 w-4" />
+              Importar Excel
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* Stepper */}
-      <div className="flex items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+      {/* Stepper Pipeline */}
+      <div className="flex items-center gap-1 rounded-xl border border-cyan-500/20 bg-cyan-950/10 p-3">
         {steps.map((step, idx) => {
           const stepIdx = steps.findIndex(s => s.key === currentStep);
           const isActive = idx === stepIdx;
           const isCompleted = idx < stepIdx;
           return (
-            <div key={step.key} className="flex items-center gap-2">
-              <div className={`flex h-8 w-8 items-center justify-center rounded-full text-sm font-medium ${
-                isCompleted ? "bg-emerald-500 text-white" :
-                isActive ? "bg-blue-600 text-white" :
-                "bg-slate-700 text-slate-400"
-              }`}>
+            <div key={step.key} className="flex items-center gap-1 flex-1">
+              <div 
+                className={`flex h-9 w-9 items-center justify-center rounded-full text-sm font-bold transition-all ${
+                  isCompleted ? "" :
+                  isActive ? "" :
+                  ""
+                }`}
+                style={{
+                  backgroundColor: isCompleted ? COLORS.success : isActive ? COLORS.neon : "#1a2744",
+                  color: isCompleted || isActive ? "#000" : COLORS.gray,
+                  boxShadow: isActive ? `0_0_15px_${COLORS.neonGlow}` : "none"
+                }}
+              >
                 {isCompleted ? <CheckCircle className="h-4 w-4" /> : idx + 1}
               </div>
-              <span className={`text-sm ${isActive ? "font-semibold text-slate-100" : "text-slate-400"}`}>
+              <span className="text-xs font-medium hidden sm:inline" style={{ color: isActive ? COLORS.white : COLORS.gray }}>
                 {step.label}
               </span>
               {idx < steps.length - 1 && (
-                <ChevronRight className="h-4 w-4 text-slate-600" />
+                <ArrowRight className="h-4 w-4 flex-1" style={{ color: COLORS.gray }} />
               )}
             </div>
           );
         })}
       </div>
 
-      <div className="grid gap-5 lg:grid-cols-[1fr_300px]">
+      <div className="grid gap-5 lg:grid-cols-[1fr_320px]">
         {/* Main Content */}
         <div className="space-y-5">
-          {/* Upload Card */}
+          {/* Upload Card com Neon Border */}
           {currentStep === "upload" && (
-            <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-8">
+            <div 
+              className="rounded-2xl border-2 border-dashed p-8 transition-all hover:scale-[1.01]"
+              style={{ 
+                borderColor: COLORS.neon, 
+                boxShadow: `0_0_30px_${COLORS.neonGlow}`,
+                backgroundColor: "rgba(0, 212, 255, 0.03)"
+              }}
+            >
               <div
                 onDrop={handleDrop}
                 onDragOver={(e) => e.preventDefault()}
-                className="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-slate-600 py-12 transition-colors hover:border-blue-400"
+                className="flex flex-col items-center justify-center rounded-xl py-16"
               >
-                <FileSpreadsheet className="h-12 w-12 text-slate-400" />
-                <p className="mt-4 text-lg font-medium text-slate-200">Arraste o arquivo Excel aqui</p>
-                <p className="mt-1 text-sm text-slate-400">ou clique para selecionar</p>
+                <div className="rounded-full p-4 mb-4" style={{ backgroundColor: "rgba(0, 212, 255, 0.1)" }}>
+                  <FileSpreadsheet className="h-12 w-12" style={{ color: COLORS.neon }} />
+                </div>
+                <p className="text-lg font-medium" style={{ color: COLORS.white }}>Arraste o arquivo Excel aqui</p>
+                <p className="text-sm mt-1" style={{ color: COLORS.gray }}>ou clique para selecionar</p>
                 <input
                   ref={fileInputRef}
                   type="file"
@@ -347,28 +385,32 @@ export function ImportView({ onRefresh, onImport, onDataImported }: ImportViewPr
                 />
                 <button
                   onClick={() => fileInputRef.current?.click()}
-                  className="mt-6 rounded-lg bg-gradient-to-r from-blue-600 to-purple-600 px-6 py-2 text-sm font-medium text-white hover:from-blue-700 hover:to-purple-700"
+                  className="mt-6 rounded-lg px-6 py-2 text-sm font-medium text-white transition-all hover:scale-105"
+                  style={{ 
+                    background: `linear-gradient(135deg, ${COLORS.neon}, ${COLORS.neonSecondary})`,
+                    boxShadow: `0_0_20px_${COLORS.neonGlow}`
+                  }}
                 >
                   Selecionar arquivo Excel
                 </button>
-                <p className="mt-4 text-xs text-slate-500">Aceitos: .xlsx, .xls</p>
+                <p className="mt-4 text-xs" style={{ color: COLORS.gray }}>Aceitos: .xlsx, .xls</p>
               </div>
             </div>
           )}
 
           {/* Validation Errors */}
           {currentStep === "validacao" && errors.length > 0 && (
-            <div className="rounded-2xl border border-rose-400/30 bg-rose-500/10 p-6">
+            <div className="rounded-2xl border border-red-500/50 bg-red-950/20 p-6" style={{ boxShadow: `0_0_20px_rgba(239, 68, 68, 0.2)` }}>
               <div className="flex items-center gap-3">
-                <XCircle className="h-6 w-6 text-rose-400" />
-                <h3 className="text-lg font-semibold text-slate-100">Erros na Validação</h3>
+                <XCircle className="h-6 w-6" style={{ color: COLORS.error }} />
+                <h3 className="text-lg font-semibold" style={{ color: COLORS.white }}>Erros na Validação</h3>
               </div>
               <div className="mt-4 space-y-2">
                 {errors.map((err, i) => (
-                  <p key={i} className="text-sm text-rose-300">{err}</p>
+                  <p key={i} className="text-sm" style={{ color: COLORS.error }}>{err}</p>
                 ))}
               </div>
-              <button onClick={reset} className="mt-4 text-sm text-blue-400 hover:underline">
+              <button onClick={reset} className="mt-4 text-sm hover:underline" style={{ color: COLORS.neon }}>
                 Tentar novamente
               </button>
             </div>
@@ -376,37 +418,39 @@ export function ImportView({ onRefresh, onImport, onDataImported }: ImportViewPr
 
           {/* Preview Table */}
           {(currentStep === "previa" || currentStep === "mapeamento") && parsedRows.length > 0 && (
-            <div className="rounded-2xl border border-white/10 bg-white/[0.03] overflow-hidden">
-              <div className="border-b border-white/10 bg-slate-800/50 px-6 py-4">
-                <h3 className="text-lg font-semibold text-slate-100">Prévia dos Dados</h3>
-                <p className="text-sm text-slate-400">{parsedRows.length} registros encontrados</p>
+            <div className="rounded-2xl border border-cyan-500/20 bg-cyan-950/10 overflow-hidden">
+              <div className="border-b border-cyan-500/20 px-6 py-4 flex items-center justify-between">
+                <div>
+                  <h3 className="text-lg font-semibold" style={{ color: COLORS.white }}>Prévia dos Dados</h3>
+                  <p className="text-sm" style={{ color: COLORS.gray }}>{parsedRows.length} registros encontrados</p>
+                </div>
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="border-b border-white/10 bg-slate-800/30">
-                      <th className="px-4 py-3 text-left font-medium text-slate-300">PDCA</th>
-                      <th className="px-4 py-3 text-left font-medium text-slate-300">Fase</th>
-                      <th className="px-4 py-3 text-left font-medium text-slate-300">Ação</th>
-                      <th className="px-4 py-3 text-left font-medium text-slate-300">Subação</th>
-                      <th className="px-4 py-3 text-left font-medium text-slate-300">Responsável</th>
-                      <th className="px-4 py-3 text-left font-medium text-slate-300">Status</th>
+                    <tr style={{ backgroundColor: "rgba(0, 212, 255, 0.05)" }}>
+                      <th className="px-4 py-3 text-left font-medium" style={{ color: COLORS.neon }}>PDCA</th>
+                      <th className="px-4 py-3 text-left font-medium" style={{ color: COLORS.neon }}>Fase</th>
+                      <th className="px-4 py-3 text-left font-medium" style={{ color: COLORS.neon }}>Ação</th>
+                      <th className="px-4 py-3 text-left font-medium" style={{ color: COLORS.neon }}>Subação</th>
+                      <th className="px-4 py-3 text-left font-medium" style={{ color: COLORS.neon }}>Responsável</th>
+                      <th className="px-4 py-3 text-left font-medium" style={{ color: COLORS.neon }}>Status</th>
                     </tr>
                   </thead>
                   <tbody>
                     {parsedRows.slice(0, 10).map((row, i) => (
-                      <tr key={i} className="border-b border-white/5">
-                        <td className="px-4 py-3 font-medium text-slate-200">{row.pdca}</td>
+                      <tr key={i} className="border-b border-cyan-500/10 hover:bg-cyan-500/10 transition-colors">
+                        <td className="px-4 py-3 font-medium" style={{ color: COLORS.white }}>{row.pdca}</td>
                         <td className="px-4 py-3">
-                          <span className={`rounded-full px-2 py-1 text-xs font-medium text-white ${faseColors[row.fase]}`}>
+                          <span className={`rounded-full px-2 py-1 text-xs font-medium text-white ${faseColors[row.fase].bg}`}>
                             {faseLabels[row.fase]}
                           </span>
                         </td>
-                        <td className="px-4 py-3 text-slate-300">{row.acao}</td>
-                        <td className="px-4 py-3 text-slate-300">{row.subacao}</td>
-                        <td className="px-4 py-3 text-slate-400">{row.responsavel}</td>
+                        <td className="px-4 py-3" style={{ color: COLORS.gray }}>{row.acao}</td>
+                        <td className="px-4 py-3" style={{ color: COLORS.gray }}>{row.subacao}</td>
+                        <td className="px-4 py-3" style={{ color: COLORS.gray }}>{row.responsavel}</td>
                         <td className="px-4 py-3">
-                          <span className="rounded-full px-2 py-1 text-xs font-medium bg-slate-700 text-slate-300">
+                          <span className="rounded-full px-2 py-1 text-xs font-medium bg-blue-500/20 text-blue-400">
                             {row.status}
                           </span>
                         </td>
@@ -416,7 +460,7 @@ export function ImportView({ onRefresh, onImport, onDataImported }: ImportViewPr
                 </table>
               </div>
               {parsedRows.length > 10 && (
-                <p className="px-4 py-3 text-sm text-slate-500 bg-slate-800/30">
+                <p className="px-4 py-3 text-sm bg-cyan-950/30" style={{ color: COLORS.gray }}>
                   Mostrando 10 de {parsedRows.length} registros
                 </p>
               )}
@@ -425,10 +469,11 @@ export function ImportView({ onRefresh, onImport, onDataImported }: ImportViewPr
 
           {/* Sync Buttons */}
           {(currentStep === "previa" || currentStep === "mapeamento") && (
-            <div className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+            <div className="flex items-center justify-between rounded-xl border border-cyan-500/20 bg-cyan-950/10 p-4">
               <button
                 onClick={reset}
-                className="flex items-center gap-2 rounded-lg border border-slate-600 px-4 py-2 text-sm font-medium text-slate-300 hover:bg-slate-800"
+                className="flex items-center gap-2 rounded-lg border px-4 py-2 text-sm font-medium transition-all hover:bg-cyan-500/10"
+                style={{ borderColor: COLORS.neon, color: COLORS.neon }}
               >
                 <X className="h-4 w-4" />
                 Cancelar
@@ -436,7 +481,11 @@ export function ImportView({ onRefresh, onImport, onDataImported }: ImportViewPr
               <button
                 onClick={handleImport}
                 disabled={importing || parsedRows.length === 0}
-                className="flex items-center gap-2 rounded-lg bg-gradient-to-r from-blue-600 to-purple-600 px-6 py-2 text-sm font-medium text-white hover:from-blue-700 hover:to-purple-700 disabled:opacity-50"
+                className="flex items-center gap-2 rounded-lg px-6 py-2 text-sm font-medium text-white transition-all hover:scale-105 disabled:opacity-50"
+                style={{ 
+                  background: `linear-gradient(135deg, ${COLORS.neon}, ${COLORS.neonSecondary})`,
+                  boxShadow: `0_0_20px_${COLORS.neonGlow}`
+                }}
               >
                 {importing ? (
                   <>Sincronizando...</>
@@ -452,12 +501,12 @@ export function ImportView({ onRefresh, onImport, onDataImported }: ImportViewPr
 
           {/* Success */}
           {success && (
-            <div className="rounded-2xl border border-emerald-400/30 bg-emerald-500/10 p-6">
+            <div className="rounded-2xl border border-emerald-500/50 bg-emerald-950/20 p-6" style={{ boxShadow: `0_0_20px_rgba(16, 185, 129, 0.2)` }}>
               <div className="flex items-center gap-3">
-                <CheckCircle className="h-6 w-6 text-emerald-400" />
+                <CheckCircle className="h-6 w-6" style={{ color: COLORS.success }} />
                 <div>
-                  <h3 className="text-lg font-semibold text-slate-100">Importação concluída!</h3>
-                  <p className="text-sm text-slate-300">{parsedRows.length} registros sincronizados com sucesso.</p>
+                  <h3 className="text-lg font-semibold" style={{ color: COLORS.white }}>Importação concluída!</h3>
+                  <p className="text-sm" style={{ color: COLORS.gray }}>{parsedRows.length} registros sincronizados com sucesso.</p>
                 </div>
               </div>
             </div>
@@ -466,85 +515,87 @@ export function ImportView({ onRefresh, onImport, onDataImported }: ImportViewPr
 
         {/* Sidebar */}
         <div className="space-y-4">
-          {/* File Info */}
+          {/* File Info Card */}
           {file && (
-            <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
-              <h3 className="text-lg font-semibold text-slate-100">Informações do Arquivo</h3>
-              <div className="mt-4 space-y-3">
+            <div className="rounded-xl border border-cyan-500/20 bg-cyan-950/10 p-5">
+              <h3 className="text-lg font-semibold" style={{ color: COLORS.white }}>Informações do Arquivo</h3>
+              <div className="mt-4 space-y-4">
                 <div>
-                  <p className="text-xs font-medium uppercase text-slate-500">Nome</p>
-                  <p className="mt-1 text-sm text-slate-300 truncate">{file.name}</p>
+                  <p className="text-xs font-medium uppercase" style={{ color: COLORS.neon }}>Nome</p>
+                  <p className="mt-1 text-sm truncate" style={{ color: COLORS.white }}>{file.name}</p>
                 </div>
                 <div>
-                  <p className="text-xs font-medium uppercase text-slate-500">Tamanho</p>
-                  <p className="mt-1 text-sm text-slate-300">{(file.size / 1024).toFixed(1)} KB</p>
+                  <p className="text-xs font-medium uppercase" style={{ color: COLORS.neon }}>Tamanho</p>
+                  <p className="mt-1 text-sm" style={{ color: COLORS.white }}>{(file.size / 1024).toFixed(1)} KB</p>
                 </div>
-                <div>
-                  <p className="text-xs font-medium uppercase text-slate-500">PDCAs detectados</p>
-                  <p className="mt-1 text-sm text-slate-300">{new Set(parsedRows.map(r => r.pdca)).size}</p>
-                </div>
-                <div>
-                  <p className="text-xs font-medium uppercase text-slate-500">Subações detectadas</p>
-                  <p className="mt-1 text-sm text-slate-300">{parsedRows.length}</p>
+                <div className="flex gap-4">
+                  <div>
+                    <p className="text-xs font-medium uppercase" style={{ color: COLORS.neon }}>PDCAs</p>
+                    <p className="mt-1 text-lg font-bold" style={{ color: COLORS.neon }}>{new Set(parsedRows.map(r => r.pdca)).size}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-medium uppercase" style={{ color: COLORS.neon }}>Subações</p>
+                    <p className="mt-1 text-lg font-bold" style={{ color: COLORS.neon }}>{parsedRows.length}</p>
+                  </div>
                 </div>
               </div>
             </div>
           )}
 
           {/* Validation Summary */}
-          <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
-            <h3 className="text-lg font-semibold text-slate-100">Validação</h3>
+          <div className="rounded-xl border border-cyan-500/20 bg-cyan-950/10 p-5">
+            <h3 className="text-lg font-semibold" style={{ color: COLORS.white }}>Validação</h3>
             <div className="mt-4 space-y-3">
               <div className="flex items-center gap-3">
-                <CheckCircle className="h-5 w-5 text-emerald-400" />
-                <span className="text-sm text-slate-300">{parsedRows.length} registros válidos</span>
+                <CheckCircle className="h-5 w-5" style={{ color: COLORS.success }} />
+                <span className="text-sm" style={{ color: COLORS.white }}>{parsedRows.length} válidos</span>
               </div>
               {errors.length > 0 && (
                 <div className="flex items-center gap-3">
-                  <XCircle className="h-5 w-5 text-rose-400" />
-                  <span className="text-sm text-rose-300">{errors.length} erros</span>
+                  <XCircle className="h-5 w-5" style={{ color: COLORS.error }} />
+                  <span className="text-sm" style={{ color: COLORS.error }}>{errors.length} erros</span>
                 </div>
               )}
               {warnings.length > 0 && (
                 <div className="flex items-center gap-3">
-                  <AlertTriangle className="h-5 w-5 text-amber-400" />
-                  <span className="text-sm text-amber-300">{warnings.length} avisos</span>
+                  <AlertTriangle className="h-5 w-5" style={{ color: COLORS.warning }} />
+                  <span className="text-sm" style={{ color: COLORS.warning }}>{warnings.length} avisos</span>
                 </div>
               )}
             </div>
           </div>
 
           {/* Insights */}
-          <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
-            <h3 className="text-lg font-semibold text-slate-100">Insights</h3>
-            <div className="mt-4 space-y-3">
+          <div className="rounded-xl border border-cyan-500/20 bg-cyan-950/10 p-5">
+            <h3 className="text-lg font-semibold" style={{ color: COLORS.white }}>Insights</h3>
+            <div className="mt-4 space-y-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <Layers3 className="h-4 w-4 text-slate-400" />
-                  <span className="text-sm text-slate-400">Com evidência</span>
+                  <Layers3 className="h-4 w-4" style={{ color: COLORS.neon }} />
+                  <span className="text-sm" style={{ color: COLORS.gray }}>Com evidência</span>
                 </div>
-                <span className="text-sm font-semibold text-slate-200">{stats.withEvidence}</span>
+                <span className="text-sm font-bold" style={{ color: COLORS.neon }}>{stats.withEvidence}</span>
               </div>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <Clock className="h-4 w-4 text-slate-400" />
-                  <span className="text-sm text-slate-400">Em execução</span>
+                  <Clock className="h-4 w-4" style={{ color: COLORS.progress }} />
+                  <span className="text-sm" style={{ color: COLORS.gray }}>Em execução</span>
                 </div>
-                <span className="text-sm font-semibold text-slate-200">{stats.inProgress}</span>
+                <span className="text-sm font-bold" style={{ color: COLORS.progress }}>{stats.inProgress}</span>
               </div>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <ListChecks className="h-4 w-4 text-slate-400" />
-                  <span className="text-sm text-slate-400">Pendentes</span>
+                  <ListChecks className="h-4 w-4" style={{ color: COLORS.gray }} />
+                  <span className="text-sm" style={{ color: COLORS.gray }}>Pendentes</span>
                 </div>
-                <span className="text-sm font-semibold text-slate-200">{stats.pending}</span>
+                <span className="text-sm font-bold" style={{ color: COLORS.white }}>{stats.pending}</span>
               </div>
-              <div className="flex items-center justify-between border-t border-white/10 pt-3">
+              <div className="flex items-center justify-between border-t border-cyan-500/20 pt-4">
                 <div className="flex items-center gap-2">
-                  <Gauge className="h-4 w-4 text-blue-400" />
-                  <span className="text-sm font-medium text-slate-200">Efetividade geral</span>
+                  <Gauge className="h-4 w-4" style={{ color: COLORS.neon }} />
+                  <span className="text-sm font-medium" style={{ color: COLORS.white }}>Efetividade</span>
                 </div>
-                <span className="text-sm font-bold text-blue-400">{stats.completion}%</span>
+                <span className="text-lg font-bold" style={{ color: COLORS.neon, textShadow: `0_0_10px_${COLORS.neon}` }}>{stats.completion}%</span>
               </div>
             </div>
           </div>
