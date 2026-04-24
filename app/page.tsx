@@ -15,6 +15,7 @@ import { useAppState, useFilteredData } from "@/lib/app-state";
 import { PortfolioView } from "@/components/pdca/portfolio-view";
 import { ImportView } from "@/components/pdca/importacao-view";
 import { PersistenciaView } from "@/components/pdca/persistencia-view";
+import { PdcaFlowStepper } from "@/components/pdca/pdca-flow-stepper";
 
 type PdcaComputedMetrics = {
   totalSubactions: number;
@@ -280,7 +281,13 @@ export default function Page() {
         ) : null}
 
         {activeView === "painel" && (
-          <section className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+          <div className="mt-6">
+            <PdcaFlowStepper loading={loading} />
+          </div>
+        )}
+
+        {activeView === "painel" && (
+          <section className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
             <KpiCard
               title="PDCAs Ativos"
               value={String(stats.pdcaCount)}
@@ -419,7 +426,7 @@ export default function Page() {
         )}
 
         {activeView === "portfolio" && (
-          <div className="rounded-2xl bg-slate-50 p-6 min-h-[calc(100vh-120px)]">
+          <div className="min-h-[calc(100vh-120px)]">
             <PortfolioView
               pdcas={pdcas}
               selectedPdcaId={selectedPdcaId}

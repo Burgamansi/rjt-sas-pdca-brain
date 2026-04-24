@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Search, RefreshCw, Upload, FileText, ChevronRight, CheckCircle, Clock, AlertTriangle, Layers, Gauge, Calendar } from "lucide-react";
+import { AlertTriangle, Calendar, CheckCircle, ChevronRight, Clock, FileText, Gauge, Layers, RefreshCw, Search, Upload, X } from "lucide-react";
 import { PdcaRecord, PdcaPhase } from "@/lib/types";
 
 type PortfolioViewProps = {
@@ -12,51 +12,50 @@ type PortfolioViewProps = {
   onImport: () => void;
 };
 
-const phaseLabels: Record<PdcaPhase, string> = {
-  plan: "Plan",
-  do: "Execute",
-  check: "Check",
-  act: "Act"
+const PHASE_LABEL: Record<PdcaPhase, string> = { plan: "PLAN", do: "DO", check: "CHECK", act: "ACT" };
+const PHASE_STYLE: Record<PdcaPhase, { bar: string; chip: string }> = {
+  plan:  { bar: "bg-blue-500",    chip: "border-blue-400/40 bg-blue-500/15 text-blue-300" },
+  do:    { bar: "bg-emerald-500", chip: "border-emerald-400/40 bg-emerald-500/15 text-emerald-300" },
+  check: { bar: "bg-amber-500",   chip: "border-amber-400/40 bg-amber-500/15 text-amber-300" },
+  act:   { bar: "bg-rose-500",    chip: "border-rose-400/40 bg-rose-500/15 text-rose-300" },
 };
 
-const phaseColors: Record<PdcaPhase, string> = {
-  plan: "bg-blue-500",
-  do: "bg-emerald-500",
-  check: "bg-amber-500",
-  act: "bg-rose-500"
+const STATUS_STYLE: Record<string, string> = {
+  concluido:    "border-emerald-400/40 bg-emerald-500/15 text-emerald-300",
+  "em-andamento": "border-amber-400/40 bg-amber-500/15 text-amber-300",
+  planejado:    "border-slate-500/40 bg-slate-700/30 text-slate-400",
+  atrasado:     "border-rose-400/40 bg-rose-500/15 text-rose-300",
+};
+const STATUS_LABEL: Record<string, string> = {
+  concluido: "Concluído", "em-andamento": "Em Andamento", planejado: "Planejado", atrasado: "Atrasado",
 };
 
-const statusConfig: Record<string, { label: string; className: string }> = {
-  concluido: { label: "Concluído", className: "bg-emerald-100 text-emerald-800" },
-  "em-andamento": { label: "Em Andamento", className: "bg-orange-100 text-orange-800" },
-  planejado: { label: "Planejado", className: "bg-slate-100 text-slate-600" },
-  atrasado: { label: "Atrasado", className: "bg-rose-100 text-rose-800" }
-};
+function getAllSubacoes(pdca: PdcaRecord) {
+  return (["plan", "do", "check", "act"] as PdcaPhase[]).flatMap((f) =>
+    (pdca.fases[f] ?? []).flatMap((a) => a.subacoes ?? [])
+  );
+}
 
 function getPdcaProgress(pdca: PdcaRecord): number {
-  const allSubacoes = [
-    ...(pdca.fases.plan || []).flatMap(a => a.subacoes || []),
-    ...(pdca.fases.do || []).flatMap(a => a.subacoes || []),
-    ...(pdca.fases.check || []).flatMap(a => a.subacoes || []),
-    ...(pdca.fases.act || []).flatMap(a => a.subacoes || [])
-  ];
-  if (allSubacoes.length === 0) return 0;
-  const concluidas = allSubacoes.filter(s => s.status?.toLowerCase().includes("conclu") || s.status?.toLowerCase().includes("done")).length;
-  return Math.round((concluidas / allSubacoes.length) * 100);
+  const all = getAllSubacoes(pdca);
+  if (!all.length) return 0;
+  const done = all.filter((s) => (s.status ?? "").toLowerCase().includes("conclu")).length;
+  return Math.round((done / all.length) * 100);
 }
 
 function getPdcaStatus(pdca: PdcaRecord): string {
-  const progress = getPdcaProgress(pdca);
-  if (progress >= 90) return "concluido";
-  if (progress > 0) return "em-andamento";
+  const p = getPdcaProgress(pdca);
+  if (p >= 90) return "concluido";
+  if (p > 0) return "em-andamento";
   return "planejado";
 }
 
 function getCurrentPhase(pdca: PdcaRecord): PdcaPhase {
-  const phases: PdcaPhase[] = ["plan", "do", "check", "act"];
-  for (const phase of phases) {
-    const actions = pdca.fases[phase] || [];
-    const hasPending = actions.some(a => (a.subacoes || []).some(s => !s.status?.toLowerCase().includes("conclu")));
+  for (const phase of ["plan", "do", "check", "act"] as PdcaPhase[]) {
+    const actions = pdca.fases[phase] ?? [];
+    const hasPending = actions.some((a) =>
+      (a.subacoes ?? []).some((s) => !(s.status ?? "").toLowerCase().includes("conclu"))
+    );
     if (hasPending && actions.length > 0) return phase;
   }
   return "act";
@@ -65,160 +64,99 @@ function getCurrentPhase(pdca: PdcaRecord): PdcaPhase {
 export function PortfolioView({ pdcas, selectedPdcaId, onSelectPdca, onRefresh, onImport }: PortfolioViewProps) {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
-  const [phaseFilter, setPhaseFilter] = useState("all");
+  const [phaseFilter, setPhaseFilter] = useState<PdcaPhase | "all">("all");
 
-const stats = useMemo(() => {
+  const stats = useMemo(() => {
     const ativo = pdcas.length;
-    const concluido = pdcas.filter(p => getPdcaProgress(p) >= 90).length;
-    const emAndamento = pdcas.filter(p => getPdcaStatus(p) === "em-andamento").length;
-    const atrasado = pdcas.filter(p => {
-      const fase = getCurrentPhase(p);
-      const actions = p.fases[fase] || [];
-      return actions.some(a => (a.subacoes || []).some((s: any) => s.status?.toLowerCase().includes("atras")));
+    const concluido = pdcas.filter((p) => getPdcaProgress(p) >= 90).length;
+    const emAndamento = pdcas.filter((p) => getPdcaStatus(p) === "em-andamento").length;
+    const atrasado = pdcas.filter((p) => {
+      const all = getAllSubacoes(p);
+      return all.some((s) => (s.status ?? "").toLowerCase().includes("atras"));
     }).length;
     const efetividade = ativo > 0 ? Math.round(pdcas.reduce((acc, p) => acc + getPdcaProgress(p), 0) / ativo) : 0;
-    const prazos = pdcas.flatMap(p => [
-      ...(p.fases.plan || []).flatMap(a => a.subacoes || []),
-      ...(p.fases.do || []).flatMap(a => a.subacoes || []),
-      ...(p.fases.check || []).flatMap(a => a.subacoes || []),
-      ...(p.fases.act || []).flatMap(a => a.subacoes || [])
-    ].map(s => (s as any).prazo)).filter(Boolean);
-    const prazoMedio = prazos.length > 0 ? Math.round(prazos.length / 2) : 0;
-    return { ativo, concluido, emAndamento, atrasado, efetividade, prazoMedio };
+    const totalSubacoes = pdcas.reduce((acc, p) => acc + getAllSubacoes(p).length, 0);
+    return { ativo, concluido, emAndamento, atrasado, efetividade, totalSubacoes };
   }, [pdcas]);
 
   const phaseDistribution = useMemo(() => {
-    const phases: PdcaPhase[] = ["plan", "do", "check", "act"];
     const dist: Record<PdcaPhase, number> = { plan: 0, do: 0, check: 0, act: 0 };
-    pdcas.forEach(p => {
-      const fase = getCurrentPhase(p);
-      dist[fase]++;
-    });
+    pdcas.forEach((p) => { dist[getCurrentPhase(p)]++; });
     const total = pdcas.length || 1;
-    return phases.map(phase => ({
+    return (["plan", "do", "check", "act"] as PdcaPhase[]).map((phase) => ({
       phase,
       count: dist[phase],
-      percent: Math.round((dist[phase] / total) * 100)
+      percent: Math.round((dist[phase] / total) * 100),
     }));
   }, [pdcas]);
 
-  const filteredPdcas = useMemo(() => {
-    return pdcas.filter(p => {
-      const matchSearch = !search || p.id.toLowerCase().includes(search.toLowerCase()) || p.titulo?.toLowerCase().includes(search.toLowerCase());
-      const matchStatus = statusFilter === "all" || getPdcaStatus(p) === statusFilter;
-      const matchPhase = phaseFilter === "all" || getCurrentPhase(p) === phaseFilter;
-      return matchSearch && matchStatus && matchPhase;
-    });
-  }, [pdcas, search, statusFilter, phaseFilter]);
+  const filtered = useMemo(() => pdcas.filter((p) => {
+    const matchSearch = !search || p.id.toLowerCase().includes(search.toLowerCase()) || (p.titulo ?? "").toLowerCase().includes(search.toLowerCase());
+    const matchStatus = statusFilter === "all" || getPdcaStatus(p) === statusFilter;
+    const matchPhase = phaseFilter === "all" || getCurrentPhase(p) === phaseFilter;
+    return matchSearch && matchStatus && matchPhase;
+  }), [pdcas, search, statusFilter, phaseFilter]);
 
-  const selectedPdca = pdcas.find(p => p.id === selectedPdcaId);
+  const selectedPdca = pdcas.find((p) => p.id === selectedPdcaId);
 
-  const clearFilters = () => {
-    setSearch("");
-    setStatusFilter("all");
-    setPhaseFilter("all");
-  };
+  const KPI_ITEMS = [
+    { label: "PDCAs Ativos", value: stats.ativo, icon: Layers, color: "text-sky-400", bg: "bg-sky-500/10 border-sky-500/20" },
+    { label: "Concluídos", value: stats.concluido, icon: CheckCircle, color: "text-emerald-400", bg: "bg-emerald-500/10 border-emerald-500/20" },
+    { label: "Em Andamento", value: stats.emAndamento, icon: Clock, color: "text-amber-400", bg: "bg-amber-500/10 border-amber-500/20" },
+    { label: "Atrasados", value: stats.atrasado, icon: AlertTriangle, color: "text-rose-400", bg: "bg-rose-500/10 border-rose-500/20" },
+    { label: "Efetividade", value: `${stats.efetividade}%`, icon: Gauge, color: "text-indigo-400", bg: "bg-indigo-500/10 border-indigo-500/20" },
+    { label: "Subações", value: stats.totalSubacoes, icon: Calendar, color: "text-purple-400", bg: "bg-purple-500/10 border-purple-500/20" },
+  ];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 className="text-2xl font-bold text-slate-900">Portfolio PDCA</h2>
-          <p className="mt-1 text-sm text-slate-600">Gerenciamento completo do portfólio de PDCAs.</p>
+          <h2 className="text-2xl font-bold text-white">Portfolio PDCA</h2>
+          <p className="mt-1 text-sm text-slate-400">Visão consolidada do portfólio de ciclos PDCA.</p>
         </div>
-        <div className="flex gap-3">
-          <button
-            onClick={onRefresh}
-            className="flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
-          >
-            <RefreshCw className="h-4 w-4" />
-            Atualizar
+        <div className="flex gap-2">
+          <button onClick={onRefresh} className="inline-flex items-center gap-2 rounded-xl border border-slate-700/60 bg-slate-800/60 px-4 py-2 text-sm font-medium text-slate-300 hover:text-white transition-colors">
+            <RefreshCw className="h-4 w-4" /> Atualizar
           </button>
-          <button
-            onClick={onImport}
-            className="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
-          >
-            <Upload className="h-4 w-4" />
-            Importar Excel
+          <button onClick={onImport} className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-[0_0_16px_rgba(56,189,248,0.3)] hover:from-cyan-400 hover:to-blue-500 transition-all">
+            <Upload className="h-4 w-4" /> Importar Excel
           </button>
         </div>
       </div>
 
-      {/* KPI Cards */}
-      <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-6">
-        <div className="rounded-2xl bg-white p-4 shadow-sm">
-          <div className="flex items-center gap-2">
-            <div className="rounded-lg bg-sky-100 p-2">
-              <Layers className="h-4 w-4 text-sky-600" />
+      {/* KPIs */}
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-6">
+        {KPI_ITEMS.map(({ label, value, icon: Icon, color, bg }) => (
+          <div key={label} className={`rounded-2xl border ${bg} p-4`}>
+            <div className="flex items-center gap-2">
+              <div className={`rounded-lg bg-slate-900/60 p-1.5`}>
+                <Icon className={`h-4 w-4 ${color}`} />
+              </div>
+              <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">{label}</span>
             </div>
-            <span className="text-xs font-medium uppercase text-slate-500">PDCAs Ativos</span>
+            <p className={`mt-3 text-2xl font-bold tabular-nums ${color}`}>{value}</p>
           </div>
-          <p className="mt-3 text-2xl font-bold text-slate-900">{stats.ativo}</p>
-        </div>
-        <div className="rounded-2xl bg-white p-4 shadow-sm">
-          <div className="flex items-center gap-2">
-            <div className="rounded-lg bg-emerald-100 p-2">
-              <CheckCircle className="h-4 w-4 text-emerald-600" />
-            </div>
-            <span className="text-xs font-medium uppercase text-slate-500">Concluídos</span>
-          </div>
-          <p className="mt-3 text-2xl font-bold text-slate-900">{stats.concluido}</p>
-        </div>
-        <div className="rounded-2xl bg-white p-4 shadow-sm">
-          <div className="flex items-center gap-2">
-            <div className="rounded-lg bg-orange-100 p-2">
-              <Clock className="h-4 w-4 text-orange-600" />
-            </div>
-            <span className="text-xs font-medium uppercase text-slate-500">Em-andamento</span>
-          </div>
-          <p className="mt-3 text-2xl font-bold text-slate-900">{stats.emAndamento}</p>
-        </div>
-        <div className="rounded-2xl bg-white p-4 shadow-sm">
-          <div className="flex items-center gap-2">
-            <div className="rounded-lg bg-rose-100 p-2">
-              <AlertTriangle className="h-4 w-4 text-rose-600" />
-            </div>
-            <span className="text-xs font-medium uppercase text-slate-500">Atrasados</span>
-          </div>
-          <p className="mt-3 text-2xl font-bold text-slate-900">{stats.atrasado}</p>
-        </div>
-        <div className="rounded-2xl bg-white p-4 shadow-sm">
-          <div className="flex items-center gap-2">
-            <div className="rounded-lg bg-indigo-100 p-2">
-              <Gauge className="h-4 w-4 text-indigo-600" />
-            </div>
-            <span className="text-xs font-medium uppercase text-slate-500">Efetividade</span>
-          </div>
-          <p className="mt-3 text-2xl font-bold text-slate-900">{stats.efetividade}%</p>
-        </div>
-        <div className="rounded-2xl bg-white p-4 shadow-sm">
-          <div className="flex items-center gap-2">
-            <div className="rounded-lg bg-purple-100 p-2">
-              <Calendar className="h-4 w-4 text-purple-600" />
-            </div>
-            <span className="text-xs font-medium uppercase text-slate-500">Qtd-Ação</span>
-          </div>
-          <p className="mt-3 text-2xl font-bold text-slate-900">{stats.prazoMedio}</p>
-        </div>
+        ))}
       </div>
 
-      {/* Filters */}
-      <div className="flex flex-wrap items-center gap-3 rounded-2xl bg-white p-4 shadow-sm">
-        <div className="relative flex-1 min-w-[200px]">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+      {/* Filtros */}
+      <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-slate-700/50 bg-slate-900/50 p-4">
+        <div className="relative min-w-[200px] flex-1">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500 pointer-events-none" />
           <input
             type="text"
             placeholder="Buscar PDCA..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full rounded-lg border border-slate-200 py-2 pl-10 pr-4 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none"
+            className="w-full rounded-xl border border-slate-700/60 bg-slate-800/60 py-2 pl-9 pr-3 text-sm text-white placeholder:text-slate-500 focus:border-cyan-500/60 focus:outline-none"
           />
         </div>
         <select
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value)}
-          className="rounded-lg border border-slate-200 py-2 pl-3 pr-8 text-sm text-slate-700 focus:border-blue-500 focus:outline-none"
+          className="rounded-xl border border-slate-700/60 bg-slate-800/60 px-3 py-2 text-sm text-slate-300 focus:border-cyan-500/60 focus:outline-none"
         >
           <option value="all">Todos os Status</option>
           <option value="concluido">Concluído</option>
@@ -228,85 +166,88 @@ const stats = useMemo(() => {
         </select>
         <select
           value={phaseFilter}
-          onChange={(e) => setPhaseFilter(e.target.value)}
-          className="rounded-lg border border-slate-200 py-2 pl-3 pr-8 text-sm text-slate-700 focus:border-blue-500 focus:outline-none"
+          onChange={(e) => setPhaseFilter(e.target.value as PdcaPhase | "all")}
+          className="rounded-xl border border-slate-700/60 bg-slate-800/60 px-3 py-2 text-sm text-slate-300 focus:border-cyan-500/60 focus:outline-none"
         >
           <option value="all">Todas as Fases</option>
-          <option value="PLAN">Plan</option>
-          <option value="DO">Execute</option>
-          <option value="CHECK">Check</option>
-          <option value="ACT">Act</option>
+          <option value="plan">PLAN</option>
+          <option value="do">DO</option>
+          <option value="check">CHECK</option>
+          <option value="act">ACT</option>
         </select>
-        <button
-          onClick={clearFilters}
-          className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50"
-        >
-          Limpar filtros
-        </button>
+        {(search || statusFilter !== "all" || phaseFilter !== "all") && (
+          <button
+            onClick={() => { setSearch(""); setStatusFilter("all"); setPhaseFilter("all"); }}
+            className="inline-flex items-center gap-1 rounded-xl border border-slate-700/60 px-3 py-2 text-sm text-slate-400 hover:text-white transition-colors"
+          >
+            <X className="h-4 w-4" /> Limpar
+          </button>
+        )}
       </div>
 
-      {/* Main Content */}
-      <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
-        {/* Table */}
-        <div className="overflow-hidden rounded-2xl bg-white shadow-sm">
+      {/* Conteúdo principal */}
+      <div className="grid gap-5 lg:grid-cols-[1fr_300px]">
+        {/* Tabela */}
+        <div className="overflow-hidden rounded-2xl border border-slate-700/50 bg-slate-900/50">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-slate-200 bg-slate-50">
-                  <th className="px-4 py-3 text-left font-medium text-slate-600">Código</th>
-                  <th className="px-4 py-3 text-left font-medium text-slate-600">PDCA</th>
-                  <th className="px-4 py-3 text-left font-medium text-slate-600">Fase</th>
-                  <th className="px-4 py-3 text-left font-medium text-slate-600">Status</th>
-                  <th className="px-4 py-3 text-left font-medium text-slate-600">Progresso</th>
-                  <th className="px-4 py-3 text-left font-medium text-slate-600">Responsável</th>
-                  <th className="px-4 py-3 text-left font-medium text-slate-600">Ações</th>
+                <tr className="border-b border-slate-700/60 bg-slate-800/60">
+                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-400">Código</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-400">PDCA</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-400">Fase</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-400">Status</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-400">Progresso</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-400">Área</th>
+                  <th className="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wide text-slate-400">Ver</th>
                 </tr>
               </thead>
-              <tbody>
-                {filteredPdcas.length === 0 ? (
+              <tbody className="divide-y divide-slate-800/60">
+                {filtered.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="px-4 py-8 text-center text-slate-500">
-                      Nenhum PDCA encontrado.
+                    <td colSpan={7} className="px-4 py-10 text-center text-slate-500">
+                      Nenhum PDCA encontrado com os filtros aplicados.
                     </td>
                   </tr>
                 ) : (
-                  filteredPdcas.map((pdca) => {
+                  filtered.map((pdca) => {
                     const progress = getPdcaProgress(pdca);
                     const status = getPdcaStatus(pdca);
                     const fase = getCurrentPhase(pdca);
+                    const ps = PHASE_STYLE[fase];
                     const isSelected = pdca.id === selectedPdcaId;
                     return (
                       <tr
                         key={pdca.id}
                         onClick={() => onSelectPdca(pdca.id)}
-                        className={`cursor-pointer border-b border-slate-100 transition-colors hover:bg-slate-50 ${isSelected ? "bg-blue-50" : ""}`}
+                        className={`cursor-pointer transition-colors hover:bg-slate-800/40 ${isSelected ? "bg-cyan-500/8 ring-1 ring-inset ring-cyan-500/20" : ""}`}
                       >
-                        <td className="px-4 py-3 font-medium text-slate-900">{pdca.id}</td>
-                        <td className="px-4 py-3 text-slate-700">{pdca.titulo?.substring(0, 30) || "-"}</td>
+                        <td className="px-4 py-3 font-mono text-sm font-semibold text-cyan-400">{pdca.id}</td>
+                        <td className="px-4 py-3 text-white">{(pdca.titulo ?? "-").substring(0, 32)}</td>
                         <td className="px-4 py-3">
-                          <span className={`rounded-full px-2 py-1 text-xs font-medium text-white ${phaseColors[fase]}`}>
-                            {phaseLabels[fase]}
+                          <span className={`inline-flex rounded-full border px-2 py-0.5 text-xs font-semibold ${ps.chip}`}>
+                            {PHASE_LABEL[fase]}
                           </span>
                         </td>
                         <td className="px-4 py-3">
-                          <span className={`rounded-full px-2 py-1 text-xs font-medium ${statusConfig[status]?.className || "bg-slate-100 text-slate-600"}`}>
-                            {statusConfig[status]?.label || status}
+                          <span className={`inline-flex rounded-full border px-2 py-0.5 text-xs font-semibold ${STATUS_STYLE[status] ?? ""}`}>
+                            {STATUS_LABEL[status] ?? status}
                           </span>
                         </td>
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-2">
-                            <div className="h-2 w-16 overflow-hidden rounded-full bg-slate-200">
+                            <div className="h-1.5 w-16 overflow-hidden rounded-full bg-slate-700">
                               <div
-                                className={`h-full rounded-full ${progress >= 90 ? "bg-emerald-500" : progress > 0 ? "bg-orange-500" : "bg-slate-300"}`}
+                                className={`h-full rounded-full transition-all ${progress >= 90 ? "bg-emerald-500" : progress > 0 ? "bg-amber-500" : "bg-slate-600"}`}
                                 style={{ width: `${progress}%` }}
                               />
                             </div>
-                            <span className="text-xs text-slate-600">{progress}%</span>
+                            <span className="text-xs tabular-nums text-slate-400">{progress}%</span>
                           </div>
                         </td>
-                        <td className="px-4 py-3 text-slate-600">{pdca.area || "-"}</td>
-                        <td className="px-4 py-3">
-                          <button className="rounded-lg p-1 text-slate-400 hover:bg-slate-100">
+                        <td className="px-4 py-3 text-sm text-slate-400">{pdca.area || "-"}</td>
+                        <td className="px-4 py-3 text-center">
+                          <button className="rounded-lg p-1.5 text-slate-500 hover:bg-slate-700 hover:text-white transition-colors">
                             <FileText className="h-4 w-4" />
                           </button>
                         </td>
@@ -319,95 +260,103 @@ const stats = useMemo(() => {
           </div>
         </div>
 
-        {/* Sidebar Panel */}
+        {/* Painel lateral */}
         <div className="space-y-4">
-          {/* Detail Panel */}
-          <div className="rounded-2xl bg-white p-5 shadow-sm">
-            <h3 className="text-lg font-semibold text-slate-900">Detalhes do PDCA</h3>
+          {/* Detalhes */}
+          <div className="rounded-2xl border border-slate-700/50 bg-slate-900/50 p-5">
+            <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-400">Detalhes do PDCA</h3>
             {selectedPdca ? (
               <div className="mt-4 space-y-4">
                 <div>
-                  <p className="text-xs font-medium uppercase text-slate-500">Código</p>
-                  <p className="mt-1 font-semibold text-slate-900">{selectedPdca.id}</p>
+                  <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-600">Código</p>
+                  <p className="mt-1 font-mono text-lg font-bold text-cyan-400">{selectedPdca.id}</p>
                 </div>
                 <div>
-                  <p className="text-xs font-medium uppercase text-slate-500">Título</p>
-                  <p className="mt-1 text-sm text-slate-700">{selectedPdca.titulo}</p>
+                  <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-600">Título</p>
+                  <p className="mt-1 text-sm text-white">{selectedPdca.titulo || "-"}</p>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <p className="text-xs font-medium uppercase text-slate-500">Fase</p>
-                    <span className={`mt-1 inline-flex rounded-full px-2 py-1 text-xs font-medium text-white ${phaseColors[getCurrentPhase(selectedPdca)]}`}>
-                      {phaseLabels[getCurrentPhase(selectedPdca)]}
+                    <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-600">Fase</p>
+                    <span className={`mt-1 inline-flex rounded-full border px-2 py-0.5 text-xs font-semibold ${PHASE_STYLE[getCurrentPhase(selectedPdca)].chip}`}>
+                      {PHASE_LABEL[getCurrentPhase(selectedPdca)]}
                     </span>
                   </div>
                   <div>
-                    <p className="text-xs font-medium uppercase text-slate-500">Status</p>
-                    <span className={`mt-1 inline-flex rounded-full px-2 py-1 text-xs font-medium ${statusConfig[getPdcaStatus(selectedPdca)]?.className || "bg-slate-100 text-slate-600"}`}>
-                      {statusConfig[getPdcaStatus(selectedPdca)]?.label || "Planejado"}
+                    <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-600">Status</p>
+                    <span className={`mt-1 inline-flex rounded-full border px-2 py-0.5 text-xs font-semibold ${STATUS_STYLE[getPdcaStatus(selectedPdca)] ?? ""}`}>
+                      {STATUS_LABEL[getPdcaStatus(selectedPdca)] ?? "Planejado"}
                     </span>
                   </div>
                 </div>
                 <div>
-                  <p className="text-xs font-medium uppercase text-slate-500">Progresso</p>
-                  <div className="mt-2 flex items-center gap-2">
-                    <div className="h-3 flex-1 overflow-hidden rounded-full bg-slate-200">
+                  <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-600">Progresso</p>
+                  <div className="mt-2 flex items-center gap-3">
+                    <div className="h-2 flex-1 overflow-hidden rounded-full bg-slate-700">
                       <div
-                        className="h-full rounded-full bg-blue-500"
+                        className="h-full rounded-full bg-gradient-to-r from-cyan-500 to-blue-600"
                         style={{ width: `${getPdcaProgress(selectedPdca)}%` }}
                       />
                     </div>
-                    <span className="text-sm font-semibold text-slate-900">{getPdcaProgress(selectedPdca)}%</span>
+                    <span className="text-sm font-bold tabular-nums text-white">{getPdcaProgress(selectedPdca)}%</span>
                   </div>
                 </div>
                 <div>
-                  <p className="text-xs font-medium uppercase text-slate-500">Área</p>
-                  <p className="mt-1 text-sm text-slate-700">{selectedPdca.area || "-"}</p>
+                  <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-600">Área</p>
+                  <p className="mt-1 text-sm text-slate-300">{selectedPdca.area || "-"}</p>
                 </div>
-                <div>
-                  <p className="text-xs font-medium uppercase text-slate-500">Situação</p>
-                  <p className="mt-1 text-sm text-slate-700">{selectedPdca.situacao || "-"}</p>
-                </div>
+                {selectedPdca.situacao && (
+                  <div>
+                    <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-600">Situação</p>
+                    <p className="mt-1 line-clamp-3 text-xs text-slate-400">{selectedPdca.situacao}</p>
+                  </div>
+                )}
               </div>
             ) : (
               <p className="mt-4 text-sm text-slate-500">Selecione um PDCA na tabela.</p>
             )}
           </div>
 
-          {/* Phase Distribution */}
-          <div className="rounded-2xl bg-white p-5 shadow-sm">
-            <h3 className="text-lg font-semibold text-slate-900">Distribuição por Fase</h3>
+          {/* Distribuição por fase */}
+          <div className="rounded-2xl border border-slate-700/50 bg-slate-900/50 p-5">
+            <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-400">Distribuição por Fase</h3>
             <div className="mt-4 space-y-3">
-              {phaseDistribution.map(({ phase, count, percent }) => (
-                <div key={phase}>
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="font-medium text-slate-700">{phaseLabels[phase]}</span>
-                    <span className="text-slate-500">{count} ({percent}%)</span>
+              {phaseDistribution.map(({ phase, count, percent }) => {
+                const ps = PHASE_STYLE[phase];
+                return (
+                  <div key={phase}>
+                    <div className="flex items-center justify-between text-xs">
+                      <span className={`font-semibold ${ps.chip.split(" ").find((c) => c.startsWith("text-")) ?? "text-slate-300"}`}>
+                        {PHASE_LABEL[phase]}
+                      </span>
+                      <span className="text-slate-500">{count} · {percent}%</span>
+                    </div>
+                    <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-slate-800">
+                      <div className={`h-full rounded-full ${ps.bar}`} style={{ width: `${percent}%` }} />
+                    </div>
                   </div>
-                  <div className="mt-1 h-2 overflow-hidden rounded-full bg-slate-100">
-                    <div
-                      className={`h-full rounded-full ${phaseColors[phase]}`}
-                      style={{ width: `${percent}%` }}
-                    />
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
 
           {/* Timeline */}
-          <div className="rounded-2xl bg-white p-5 shadow-sm">
-            <h3 className="text-lg font-semibold text-slate-900">Timeline de Prazos</h3>
+          <div className="rounded-2xl border border-slate-700/50 bg-slate-900/50 p-5">
+            <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-400">PDCAs Recentes</h3>
             <div className="mt-4 space-y-2">
-              {pdcas.slice(0, 5).map((pdca) => {
+              {pdcas.slice(0, 6).map((pdca) => {
                 const status = getPdcaStatus(pdca);
-                const statusColor = status === "concluido" ? "bg-emerald-500" : status === "em-andamento" ? "bg-orange-500" : "bg-slate-300";
+                const dot = status === "concluido" ? "bg-emerald-500" : status === "em-andamento" ? "bg-amber-500" : "bg-slate-600";
                 return (
-                  <div key={pdca.id} className="flex items-center gap-3">
-                    <div className={`h-2 w-2 rounded-full ${statusColor}`} />
-                    <span className="flex-1 text-sm text-slate-700">{pdca.id}</span>
-                    <ChevronRight className="h-4 w-4 text-slate-400" />
-                  </div>
+                  <button
+                    key={pdca.id}
+                    onClick={() => onSelectPdca(pdca.id)}
+                    className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left transition-colors hover:bg-slate-800/50"
+                  >
+                    <span className={`h-2 w-2 flex-shrink-0 rounded-full ${dot}`} />
+                    <span className="min-w-0 flex-1 truncate text-sm text-slate-300">{pdca.id} — {(pdca.titulo ?? "").substring(0, 24)}</span>
+                    <ChevronRight className="h-3.5 w-3.5 flex-shrink-0 text-slate-600" />
+                  </button>
                 );
               })}
             </div>
