@@ -6,12 +6,12 @@ import * as XLSX from "xlsx";
 import { PdcaRecord, PdcaPhase } from "@/lib/types";
 
 const COLORS = {
-  bg: "#0B1220",
-  neon: "#00D4FF",
-  neonSecondary: "#2563EB",
-  neonGlow: "rgba(0, 212, 255, 0.25)",
+  bg: "#001D30",
+  neon: "#1B9BEE",
+  neonSecondary: "#0066B3",
+  neonGlow: "rgba(27, 155, 238, 0.25)",
   white: "#FFFFFF",
-  gray: "#94A3B8",
+  gray: "#C3E6FF",
   success: "#10B981",
   progress: "#F97316",
   error: "#EF4444",

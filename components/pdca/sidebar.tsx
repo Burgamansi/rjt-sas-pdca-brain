@@ -23,11 +23,11 @@ export function Sidebar({ pdcaCount, subactionCount, doneCount, completion, loca
   const pendingCount = subactionCount - doneCount;
 
   return (
-    <aside className="fixed inset-y-0 left-0 hidden w-72 border-r border-slate-800/60 bg-[#080f1f] lg:flex lg:flex-col z-30">
+    <aside className="fixed inset-y-0 left-0 hidden w-72 border-r border-[#1B9BEE]/15 bg-[#001D30] lg:flex lg:flex-col z-30">
 
       {/* Logo */}
-      <div className="flex items-center gap-3 border-b border-slate-800/60 px-6 py-5">
-        <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-cyan-400 to-blue-600 shadow-[0_0_18px_rgba(56,189,248,0.45)]">
+      <div className="flex items-center gap-3 border-b border-[#1B9BEE]/15 px-6 py-5">
+        <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#C3E6FF] to-[#1B9BEE] shadow-[0_0_18px_rgba(27,155,238,0.45)]">
           <TrendingUp className="h-5 w-5 text-white" />
         </div>
         <div>
@@ -48,23 +48,23 @@ export function Sidebar({ pdcaCount, subactionCount, doneCount, completion, loca
                 onClick={() => setActiveView(item.view)}
                 className={`group relative flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-all duration-150 ${
                   active
-                    ? "bg-cyan-500/10 text-white"
+                    ? "bg-[#1B9BEE]/10 text-white"
                     : "text-slate-400 hover:bg-slate-800/50 hover:text-white"
                 }`}
               >
                 {active && (
-                  <span className="absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-r-full bg-cyan-400 shadow-[0_0_8px_rgba(34,211,238,0.9)]" />
+                  <span className="absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-r-full bg-[#1B9BEE] shadow-[0_0_8px_rgba(27,155,238,0.9)]" />
                 )}
                 <item.icon
                   className={`h-4 w-4 flex-shrink-0 transition-colors ${
-                    active ? "text-cyan-400" : "text-slate-500 group-hover:text-slate-300"
+                    active ? "text-[#1B9BEE]" : "text-slate-500 group-hover:text-slate-300"
                   }`}
                 />
                 <div className="min-w-0 flex-1">
                   <p className={`truncate text-sm font-medium ${active ? "text-white" : ""}`}>{item.label}</p>
                   <p className="truncate text-[10px] text-slate-600">{item.desc}</p>
                 </div>
-                {active && <span className="h-1.5 w-1.5 flex-shrink-0 rounded-full bg-cyan-400" />}
+                {active && <span className="h-1.5 w-1.5 flex-shrink-0 rounded-full bg-[#1B9BEE]" />}
               </button>
             );
           })}
@@ -73,7 +73,7 @@ export function Sidebar({ pdcaCount, subactionCount, doneCount, completion, loca
         {/* Stats */}
         <div className="mt-7">
           <p className="mb-3 px-2 text-[10px] font-semibold uppercase tracking-widest text-slate-600">Resumo do Portfólio</p>
-          <div className="rounded-2xl border border-slate-800/80 bg-slate-900/50 p-4 space-y-4">
+          <div className="rounded-2xl border border-[#1B9BEE]/12 bg-[#001D30]/80 p-4 space-y-4">
 
             {/* Eficácia */}
             <div>
@@ -99,11 +99,11 @@ export function Sidebar({ pdcaCount, subactionCount, doneCount, completion, loca
 
             {/* Grid de números */}
             <div className="grid grid-cols-2 gap-3">
-              <div className="rounded-lg bg-slate-800/60 px-3 py-2.5">
+              <div className="rounded-lg bg-[#001D30]/90 px-3 py-2.5">
                 <p className="text-[10px] font-medium uppercase tracking-wider text-slate-500">PDCAs</p>
                 <p className="mt-0.5 text-xl font-bold tabular-nums text-white">{pdcaCount}</p>
               </div>
-              <div className="rounded-lg bg-slate-800/60 px-3 py-2.5">
+              <div className="rounded-lg bg-[#001D30]/90 px-3 py-2.5">
                 <p className="text-[10px] font-medium uppercase tracking-wider text-slate-500">Subações</p>
                 <p className="mt-0.5 text-xl font-bold tabular-nums text-white">{subactionCount}</p>
               </div>
@@ -111,7 +111,7 @@ export function Sidebar({ pdcaCount, subactionCount, doneCount, completion, loca
                 <p className="text-[10px] font-medium uppercase tracking-wider text-emerald-600">Concluídas</p>
                 <p className="mt-0.5 text-xl font-bold tabular-nums text-emerald-400">{doneCount}</p>
               </div>
-              <div className={`rounded-lg px-3 py-2.5 ${pendingCount > 0 ? "bg-amber-900/20 border border-amber-800/30" : "bg-slate-800/60"}`}>
+              <div className={`rounded-lg px-3 py-2.5 ${pendingCount > 0 ? "bg-amber-900/20 border border-amber-800/30" : "bg-[#001D30]/90"}`}>
                 <p className={`text-[10px] font-medium uppercase tracking-wider ${pendingCount > 0 ? "text-amber-600" : "text-slate-500"}`}>Pendentes</p>
                 <p className={`mt-0.5 text-xl font-bold tabular-nums ${pendingCount > 0 ? "text-amber-400" : "text-slate-500"}`}>{pendingCount}</p>
               </div>
@@ -120,7 +120,7 @@ export function Sidebar({ pdcaCount, subactionCount, doneCount, completion, loca
         </div>
 
         {/* Fases mini bar */}
-        <div className="mt-5 rounded-2xl border border-slate-800/80 bg-slate-900/50 p-4">
+        <div className="mt-5 rounded-2xl border border-[#1B9BEE]/12 bg-[#001D30]/80 p-4">
           <p className="mb-3 text-[10px] font-semibold uppercase tracking-widest text-slate-500">Ciclo PDCA</p>
           <div className="flex h-2 overflow-hidden rounded-full">
             <div className="flex-1 bg-blue-600" title="PLAN" />
@@ -142,7 +142,7 @@ export function Sidebar({ pdcaCount, subactionCount, doneCount, completion, loca
       </nav>
 
       {/* Connection status */}
-      <div className="border-t border-slate-800/60 px-4 py-4">
+      <div className="border-t border-[#1B9BEE]/15 px-4 py-4">
         <div className={`flex items-center gap-3 rounded-xl border px-3 py-2.5 ${
           localMode
             ? "border-amber-500/25 bg-amber-500/10"

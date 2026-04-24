@@ -245,7 +245,7 @@ export default function Page() {
   }
 
   return (
-    <div className="min-h-screen bg-[radial-gradient(circle_at_18%_12%,rgba(56,189,248,0.16),transparent_32%),radial-gradient(circle_at_82%_4%,rgba(129,140,248,0.18),transparent_30%),#020617] text-slate-100">
+    <div className="min-h-screen bg-[radial-gradient(circle_at_18%_12%,rgba(27,155,238,0.18),transparent_32%),radial-gradient(circle_at_82%_4%,rgba(195,230,255,0.10),transparent_30%),#001D30] text-slate-100">
       <Sidebar
         pdcaCount={stats.pdcaCount}
         subactionCount={stats.subactionCount}
@@ -275,7 +275,7 @@ export default function Page() {
         />
 
         {message ? (
-          <section className="mt-4 rounded-2xl border border-cyan-300/20 bg-cyan-500/10 px-4 py-3 text-sm text-cyan-100">
+          <section className="mt-4 rounded-2xl border border-[#1B9BEE]/25 bg-[#1B9BEE]/10 px-4 py-3 text-sm text-[#C3E6FF]">
             {message}
           </section>
         ) : null}
@@ -292,7 +292,7 @@ export default function Page() {
               title="PDCAs Ativos"
               value={String(stats.pdcaCount)}
               subtitle="Portfolio consolidado"
-              gradientClassName="bg-gradient-to-br from-sky-500 via-blue-500 to-indigo-600"
+              gradientClassName="bg-gradient-to-br from-[#1B9BEE] to-[#0066B3]"
               icon={Layers3}
               filter="all"
             />
@@ -300,7 +300,7 @@ export default function Page() {
               title="Subacoes"
               value={String(stats.subactionCount)}
               subtitle={`${stats.inProgress} em execucao`}
-              gradientClassName="bg-gradient-to-br from-violet-500 via-fuchsia-500 to-indigo-600"
+              gradientClassName="bg-gradient-to-br from-[#C3E6FF] via-[#1B9BEE] to-[#0066B3]"
               icon={ListChecks}
               filter="all"
             />
@@ -332,7 +332,7 @@ export default function Page() {
               title="Efetividade"
               value={`${stats.completion}%`}
               subtitle={`Media: ${stats.pdcaProgressAverage}%`}
-              gradientClassName="bg-gradient-to-br from-indigo-500 via-blue-500 to-cyan-500"
+              gradientClassName="bg-gradient-to-br from-[#001D30] via-[#1B9BEE] to-[#C3E6FF]"
               icon={Gauge}
               filter="all"
             />
@@ -340,7 +340,7 @@ export default function Page() {
         )}
 
         {activeView === "painel" && (
-          <section className="mt-6 rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+          <section className="mt-6 rounded-2xl border border-[#1B9BEE]/15 bg-[#001D30]/60 p-5">
             <div className="flex items-center justify-between gap-4">
               <div>
                 <h3 className="text-sm font-medium text-slate-300">Progresso Geral do PDCA</h3>

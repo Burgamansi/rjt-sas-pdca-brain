@@ -164,8 +164,8 @@ export function EvidenceDrawer({ isOpen, onClose, subAction }: EvidenceDrawerPro
         onClick={onClose}
       />
 
-      <aside className="fixed right-0 top-0 h-full w-full max-w-md bg-slate-900 border-l border-slate-700 z-50 overflow-y-auto">
-        <div className="sticky top-0 bg-slate-900 border-b border-slate-700 p-4 flex items-center justify-between">
+      <aside className="fixed right-0 top-0 h-full w-full max-w-md bg-[#001D30] border-l border-[#1B9BEE]/20 z-50 overflow-y-auto">
+        <div className="sticky top-0 bg-[#001D30] border-b border-[#1B9BEE]/20 p-4 flex items-center justify-between">
           <div>
             <h2 className="text-lg font-bold text-white">Detalhes da Subação</h2>
             <p className="text-sm text-slate-400">{subAction.id}</p>
@@ -228,7 +228,7 @@ export function EvidenceDrawer({ isOpen, onClose, subAction }: EvidenceDrawerPro
           <section>
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-sm font-semibold text-slate-300">ANDAMENTO</h3>
-              <span className="text-lg font-bold text-cyan-400">
+              <span className="text-lg font-bold text-[#1B9BEE]">
                 {subAction.progresso}%
               </span>
             </div>
@@ -280,7 +280,7 @@ export function EvidenceDrawer({ isOpen, onClose, subAction }: EvidenceDrawerPro
             </div>
 
             {files.length === 0 ? (
-              <div className="bg-slate-800/30 rounded-xl p-6 text-center border border-dashed border-slate-700">
+              <div className="bg-slate-800/30 rounded-xl p-6 text-center border border-dashed border-[#1B9BEE]/20">
                 <Upload className="h-8 w-8 text-slate-500 mx-auto mb-2" />
                 <p className="text-sm text-slate-400">Nenhuma evidência enviada</p>
                 <p className="text-xs text-slate-500 mt-1">

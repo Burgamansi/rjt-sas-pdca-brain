@@ -138,7 +138,7 @@ export function PersistenciaView({ pdcas, selectedPdcaId, onSelectPdca, onRefres
         </select>
         <button
           onClick={() => { setSearchTerm(""); setSelectedResponsible("all"); }}
-          className="flex items-center gap-2 rounded-lg border border-cyan-500/30 px-4 py-2 text-sm font-medium text-cyan-400 hover:bg-cyan-500/10"
+          className="flex items-center gap-2 rounded-lg border border-cyan-500/30 px-4 py-2 text-sm font-medium text-[#1B9BEE] hover:bg-[#1B9BEE]/10"
         >
           <Filter className="h-4 w-4" />
           Limpar Filtros
@@ -171,7 +171,7 @@ export function PersistenciaView({ pdcas, selectedPdcaId, onSelectPdca, onRefres
                     <tr 
                       key={pdca.id} 
                       onClick={() => onSelectPdca(pdca.id)}
-                      className="cursor-pointer border-b border-cyan-500/10 transition-colors hover:bg-cyan-500/10"
+                      className="cursor-pointer border-b border-cyan-500/10 transition-colors hover:bg-[#1B9BEE]/10"
                       style={{ 
                         backgroundColor: isSelected ? "rgba(0, 212, 255, 0.1)" : "transparent",
                         borderLeft: isSelected ? `3px solid ${COLORS.neon}` : "3px solid transparent"
@@ -199,7 +199,7 @@ export function PersistenciaView({ pdcas, selectedPdcaId, onSelectPdca, onRefres
                         <span className={`rounded-full px-2 py-1 text-xs font-medium ${
                           progress >= 90 ? "bg-emerald-500/20 text-emerald-400" :
                           progress > 0 ? "bg-orange-500/20 text-orange-400" :
-                          "bg-cyan-500/20 text-cyan-400"
+                          "bg-cyan-500/20 text-[#1B9BEE]"
                         }`}>
                           {progress >= 90 ? "Concluído" : progress > 0 ? "Em Andamento" : "Pendente"}
                         </span>
@@ -241,7 +241,7 @@ export function PersistenciaView({ pdcas, selectedPdcaId, onSelectPdca, onRefres
                 </div>
                 <div>
                   <p className="text-xs font-medium uppercase" style={{ color: COLORS.neon }}>Status</p>
-                  <span className="inline-flex mt-1 rounded-full px-3 py-1 text-sm font-medium bg-cyan-500/20 text-cyan-400">
+                  <span className="inline-flex mt-1 rounded-full px-3 py-1 text-sm font-medium bg-cyan-500/20 text-[#1B9BEE]">
                     {selectedPdca.status || "Pendente"}
                   </span>
                 </div>

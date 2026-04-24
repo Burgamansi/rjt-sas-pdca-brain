@@ -74,14 +74,14 @@ function deriveSteps(
 
 const STATUS_CONFIG: Record<StepStatus, { ring: string; bg: string; icon: string; dot: string; label: string }> = {
   "concluído":    { ring: "border-emerald-500/60", bg: "bg-emerald-500/15",   icon: "text-emerald-400",  dot: "bg-emerald-400 shadow-[0_0_8px_rgba(34,197,94,0.7)]",   label: "text-emerald-400" },
-  "em andamento": { ring: "border-cyan-500/60",    bg: "bg-cyan-500/10",      icon: "text-cyan-400",     dot: "bg-cyan-400 shadow-[0_0_8px_rgba(34,211,238,0.7)]",     label: "text-cyan-400" },
-  "pendente":     { ring: "border-slate-700/50",   bg: "bg-slate-800/40",     icon: "text-slate-500",    dot: "bg-slate-600",                                           label: "text-slate-500" },
+  "em andamento": { ring: "border-[#1B9BEE]/60",    bg: "bg-[#1B9BEE]/10",      icon: "text-[#1B9BEE]",     dot: "bg-[#1B9BEE] shadow-[0_0_8px_rgba(27,155,238,0.7)]",     label: "text-[#C3E6FF]" },
+  "pendente":     { ring: "border-slate-700/50",   bg: "bg-[#001D30]/40",     icon: "text-[#C3E6FF]/40",    dot: "bg-slate-600",                                           label: "text-[#C3E6FF]/40" },
   "erro":         { ring: "border-rose-500/60",    bg: "bg-rose-500/10",      icon: "text-rose-400",     dot: "bg-rose-400 shadow-[0_0_8px_rgba(239,68,68,0.7)]",      label: "text-rose-400" },
 };
 
 function StatusIcon({ status }: { status: StepStatus }) {
   if (status === "concluído") return <Check className="h-3.5 w-3.5 text-emerald-400" />;
-  if (status === "em andamento") return <Clock className="h-3.5 w-3.5 text-cyan-400 animate-pulse" />;
+  if (status === "em andamento") return <Clock className="h-3.5 w-3.5 text-[#1B9BEE] animate-pulse" />;
   if (status === "erro") return <AlertCircle className="h-3.5 w-3.5 text-rose-400" />;
   return null;
 }
@@ -102,22 +102,22 @@ export function PdcaFlowStepper({ loading }: { loading: boolean }) {
   const completedCount = steps.filter((s) => s.status === "concluído").length;
 
   return (
-    <section className="rounded-2xl border border-white/8 bg-slate-900/60 p-4 shadow-[0_4px_20px_-8px_rgba(0,0,0,0.5)] backdrop-blur-sm">
+    <section className="rounded-2xl border border-[#1B9BEE]/15 bg-[#001D30]/85 p-4 shadow-[0_4px_20px_-8px_rgba(0,0,0,0.5)] backdrop-blur-sm">
       <div className="mb-3 flex items-center justify-between">
         <div>
-          <h3 className="text-sm font-semibold text-slate-200">Jornada do PDCA</h3>
-          <p className="text-[10px] text-slate-500">{completedCount} de {steps.length} etapas concluídas</p>
+          <h3 className="text-sm font-semibold text-white">Jornada do PDCA</h3>
+          <p className="text-[10px] text-[#C3E6FF]/40">{completedCount} de {steps.length} etapas concluídas</p>
         </div>
-        <div className="flex items-center gap-1.5 rounded-full border border-slate-700/50 bg-slate-800/60 px-3 py-1">
-          <span className="text-[11px] font-medium text-slate-400">{Math.round((completedCount / steps.length) * 100)}%</span>
+        <div className="flex items-center gap-1.5 rounded-full border border-[#1B9BEE]/20 bg-[#001D30]/80 px-3 py-1">
+          <span className="text-[11px] font-medium text-[#C3E6FF]/70">{Math.round((completedCount / steps.length) * 100)}%</span>
         </div>
       </div>
 
       {/* Connector line */}
       <div className="relative">
-        <div className="absolute top-5 left-5 right-5 h-px bg-slate-800" />
+        <div className="absolute top-5 left-5 right-5 h-px bg-[#001D30]" />
         <div
-          className="absolute top-5 left-5 h-px bg-gradient-to-r from-cyan-500 to-emerald-500 transition-all duration-700"
+          className="absolute top-5 left-5 h-px bg-gradient-to-r from-[#1B9BEE] to-emerald-500 transition-all duration-700"
           style={{ width: `calc(${(completedCount / (steps.length - 1)) * 100}% - 40px)` }}
         />
       </div>
@@ -133,7 +133,7 @@ export function PdcaFlowStepper({ loading }: { loading: boolean }) {
               <div className={`relative z-10 flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full border-2 ${cfg.ring} ${cfg.bg} transition-all duration-300`}>
                 <Icon className={`h-4 w-4 ${cfg.icon}`} />
                 {step.status !== "pendente" && (
-                  <span className="absolute -right-0.5 -top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-slate-900">
+                  <span className="absolute -right-0.5 -top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-[#001D30]">
                     <StatusIcon status={step.status} />
                   </span>
                 )}
@@ -141,7 +141,7 @@ export function PdcaFlowStepper({ loading }: { loading: boolean }) {
 
               {/* Label */}
               <div className="flex flex-col items-center gap-0.5 text-center">
-                <span className={`text-[10px] font-semibold leading-tight ${step.status === "pendente" ? "text-slate-500" : "text-slate-300"}`}>
+                <span className={`text-[10px] font-semibold leading-tight ${step.status === "pendente" ? "text-[#C3E6FF]/40" : "text-slate-300"}`}>
                   {step.label}
                 </span>
                 <span className={`text-[9px] leading-tight ${cfg.label}`}>

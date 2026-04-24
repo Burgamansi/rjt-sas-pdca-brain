@@ -27,12 +27,12 @@ const PHASE_STYLE: Record<PdcaPhase, {
 }> = {
   plan: {
     label: "PLAN",
-    bar: "bg-blue-500",
-    chip: "border-blue-400/50 bg-blue-500/15 text-blue-300",
-    headerBg: "bg-blue-900/40 border-blue-500/30",
-    actionBg: "bg-blue-900/20 hover:bg-blue-900/35",
-    rowBg: "hover:bg-blue-500/5",
-    border: "border-blue-500/20",
+    bar: "bg-[#1B9BEE]",
+    chip: "border-[#1B9BEE]/50 bg-[#1B9BEE]/15 text-[#C3E6FF]",
+    headerBg: "bg-[#001D30]/80 border-[#1B9BEE]/30",
+    actionBg: "bg-[#1B9BEE]/8 hover:bg-[#1B9BEE]/15",
+    rowBg: "hover:bg-[#1B9BEE]/5",
+    border: "border-[#1B9BEE]/20",
   },
   do: {
     label: "DO",
@@ -206,7 +206,7 @@ export function TableGridPDCA({
   }
 
   return (
-    <section className="rounded-3xl border border-white/10 bg-white/[0.03] p-5 shadow-[0_28px_55px_-35px_rgba(15,23,42,0.9)]">
+    <section className="rounded-3xl border border-[#1B9BEE]/15 bg-[#001D30]/60 p-5 shadow-[0_28px_55px_-35px_rgba(15,23,42,0.9)]">
       {/* Header */}
       <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
         <div>
@@ -252,7 +252,7 @@ export function TableGridPDCA({
           onClick={() => { setSelectedPhase("all"); setSelectedActionId(""); }}
           className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 font-semibold transition-all ${
             selectedPhase === "all" && !selectedActionId
-              ? "border-cyan-400/60 bg-cyan-500/15 text-cyan-300 ring-2 ring-cyan-400/30"
+              ? "border-cyan-400/60 bg-cyan-500/15 text-[#C3E6FF] ring-2 ring-cyan-400/30"
               : "border-slate-600 bg-slate-800 text-slate-400 hover:text-white"
           }`}
         >
@@ -261,7 +261,7 @@ export function TableGridPDCA({
         {selectedActionId && (
           <button
             onClick={() => setSelectedActionId("")}
-            className="inline-flex items-center gap-1 rounded-full border border-cyan-400/40 bg-cyan-500/10 px-3 py-1 text-xs font-medium text-cyan-300 hover:bg-cyan-500/20"
+            className="inline-flex items-center gap-1 rounded-full border border-cyan-400/40 bg-[#1B9BEE]/10 px-3 py-1 text-xs font-medium text-[#C3E6FF] hover:bg-cyan-500/20"
           >
             ✕ Limpar filtro ação
           </button>
@@ -320,7 +320,7 @@ export function TableGridPDCA({
                             )}
                           </button>
                           <span
-                            className={`flex-1 text-sm font-semibold text-white hover:text-cyan-300 transition-colors`}
+                            className={`flex-1 text-sm font-semibold text-white hover:text-[#C3E6FF] transition-colors`}
                             onClick={(e) => { e.stopPropagation(); handleClickAction(action.id); }}
                           >
                             {action.id} — {action.acao}
@@ -341,7 +341,7 @@ export function TableGridPDCA({
                           <div className="overflow-x-auto">
                             <table className="min-w-[900px] w-full text-sm">
                               <thead>
-                                <tr className="bg-slate-900/60 border-b border-slate-800">
+                                <tr className="bg-[#001D30]/80 border-b border-[#1B9BEE]/15">
                                   <th className="pl-10 pr-3 py-2 text-left text-xs font-semibold text-slate-400 uppercase tracking-wide">Subação</th>
                                   <th className="px-3 py-2 text-left text-xs font-semibold text-slate-400 uppercase tracking-wide">Como Fazer</th>
                                   <th className="px-3 py-2 text-left text-xs font-semibold text-slate-400 uppercase tracking-wide">Responsável</th>
@@ -360,7 +360,7 @@ export function TableGridPDCA({
                                       className={`${ps.rowBg} transition-colors`}
                                     >
                                       <td
-                                        className="pl-10 pr-3 py-2.5 font-medium text-white cursor-pointer hover:text-cyan-300 transition-colors max-w-[240px]"
+                                        className="pl-10 pr-3 py-2.5 font-medium text-white cursor-pointer hover:text-[#C3E6FF] transition-colors max-w-[240px]"
                                         onClick={() => onSelectSubAction?.(row)}
                                       >
                                         <span className="line-clamp-2">{row.subacao || "—"}</span>
@@ -384,7 +384,7 @@ export function TableGridPDCA({
                                       </td>
                                       <td className="px-3 py-2.5 text-center">
                                         <button
-                                          className="inline-flex items-center justify-center rounded-lg border border-cyan-500/30 bg-cyan-500/10 p-1.5 text-cyan-400 hover:bg-cyan-500/20 transition-colors"
+                                          className="inline-flex items-center justify-center rounded-lg border border-[#1B9BEE]/30 bg-[#1B9BEE]/10 p-1.5 text-[#1B9BEE] hover:bg-cyan-500/20 transition-colors"
                                           onClick={() => onSelectSubAction?.(row)}
                                           title="Ver detalhes"
                                         >
