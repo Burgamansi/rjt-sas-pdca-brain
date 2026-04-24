@@ -405,13 +405,15 @@ export default function Page() {
             isOpen={!!selectedSubAction}
             onClose={() => setSelectedSubAction(null)}
             subAction={selectedSubAction ? {
-              id: `${selectedSubAction.etapa}-${selectedSubAction.acao}`,
+              id: selectedSubAction.subacaoId,
               pdcaId: selectedPdcaId,
               descricao: selectedSubAction.subacao,
+              comoFazer: selectedSubAction.comoFazer || undefined,
               responsavel: selectedSubAction.responsavel,
               prazo: selectedSubAction.prazo,
               status: selectedSubAction.status,
-              progresso: selectedSubAction.resultado ? parseInt(selectedSubAction.resultado.replace("%", "")) || 0 : 0
+              progresso: selectedSubAction.resultado ? parseInt(selectedSubAction.resultado.replace("%", "")) || 0 : 0,
+              evidenciaSgq: selectedSubAction.evidenciaSgq || undefined,
             } : null}
           />
         )}

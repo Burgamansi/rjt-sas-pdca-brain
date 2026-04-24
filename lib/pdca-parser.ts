@@ -3,17 +3,14 @@ import { PdcaAction, PdcaPhase, PdcaRecord, PdcaSubaction } from "./types";
 
 const HEADER_ALIASES: Record<string, string[]> = {
   fase: ["fase", "etapa", "pdca", "fase pdca", "fase do pdca", "quadrante", "ciclo"],
-  acao: ["acao", "macroacao", "macro acao", "atividade", "iniciativa"],
+  acao: [
+    "acao principal", "acao mae", "macro acao", "macroacao",
+    "acao", "atividade", "iniciativa", "id acao", "numero da acao", "cod acao",
+  ],
   subacao: [
-    "subacao",
-    "sub acao",
-    "subatividade",
-    "item",
-    "tarefa",
-    "descricao",
-    "descricao da subacao",
-    "acao detalhada",
-    "o que fazer",
+    "subacao", "sub acao", "subatividade", "item", "tarefa",
+    "descricao da subacao", "acao detalhada", "o que fazer",
+    "id sub", "numero da subacao", "subacao detalhada", "descricao",
   ],
   responsavel: ["responsavel", "resp", "owner", "dono", "lider"],
   gut: ["gut", "prioridade", "nota gut", "pontuacao gut", "score gut"],
@@ -21,6 +18,9 @@ const HEADER_ALIASES: Record<string, string[]> = {
   meta: ["meta", "objetivo", "target"],
   resultado: ["resultado", "acumulo", "acumulado", "realizado", "progresso"],
   status: ["status", "situacao", "andamento", "estado"],
+  como_fazer: ["como fazer", "metodologia", "procedimento", "descricao da acao", "como realizar", "instrucoes", "como"],
+  prazo: ["prazo", "data limite", "data prevista", "deadline", "data conclusao", "dt prevista", "dt limite", "data"],
+  evidencia: ["evidencia sgq", "evidencia esperada", "evidencia", "documento evidencia", "evidencia de conclusao", "evidencia objetivo", "comprovante"],
 };
 
 const TEMPLATE_COL = {
@@ -606,15 +606,22 @@ function parseGenericTable(rows: unknown[][], fileName: string): PdcaRecord {
     statusList.push(status);
     if (Number.isFinite(gut)) gutValues.push(gut);
 
+    const comoFazer = text(row[columns.como_fazer ?? -1], "");
+    const prazo = text(row[columns.prazo ?? -1], text(row[columns.meta ?? -1], ""));
+    const evidenciaSgq = text(row[columns.evidencia ?? -1], "");
+
     action.subacoes.push({
       id: `S${phaseLabel(phase).charAt(0)}.${subCounter[phase]}`,
       nome: subacao,
       resp: text(row[columns.responsavel ?? -1], "Nao definido"),
       gut: Number.isFinite(gut) ? gut : 0,
       indicador: text(row[columns.indicador ?? -1], "Sem indicador"),
-      meta: text(row[columns.meta ?? -1], "N/A"),
+      meta: prazo || text(row[columns.meta ?? -1], "N/A"),
       resultado: text(row[columns.resultado ?? -1], "0"),
       status,
+      ...(comoFazer ? { comoFazer } : {}),
+      ...(prazo ? { prazo } : {}),
+      ...(evidenciaSgq ? { evidenciaSgq } : {}),
     });
     subCounter[phase] += 1;
   }

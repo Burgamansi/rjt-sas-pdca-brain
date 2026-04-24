@@ -197,40 +197,53 @@ function convertToPdcaRecords(rows: ParsedRow[]): PdcaRecord[] {
   });
 
   return Array.from(byPdca.entries()).map(([id, pdcaRows]) => {
-    const fases: Record<PdcaPhase, any[]> = {
-      plan: [],
-      do: [],
-      check: [],
-      act: []
+    const fases: Record<PdcaPhase, { id: string; etapa: string; acao: string; subacoes: object[] }[]> = {
+      plan: [], do: [], check: [], act: []
     };
-    pdcaRows.forEach(row => {
-      fases[row.fase].push({
-        id: `${id}-${row.acao}-${Math.random().toString(36).substr(2, 9)}`,
-        etapa: row.fase.toUpperCase() as any,
-        acao: row.acao,
-        subacoes: [{
-          id: `${id}-${row.subacao}-${Math.random().toString(36).substr(2, 9)}`,
-          nome: row.subacao,
-          resp: row.responsavel,
-          gut: 0,
-          indicador: "",
-          meta: "",
-          resultado: "",
-          status: row.status
-        }]
+
+    // Group rows by ação within each fase
+    const actionMap = new Map<string, { id: string; etapa: string; acao: string; subacoes: object[] }>();
+
+    pdcaRows.forEach((row, rowIdx) => {
+      const actionKey = `${row.fase}::${row.acao}`;
+      if (!actionMap.has(actionKey)) {
+        const newAction = {
+          id: `${row.fase.charAt(0).toUpperCase()}${fases[row.fase].length + 1}`,
+          etapa: row.fase.toUpperCase(),
+          acao: row.acao,
+          subacoes: [] as object[],
+        };
+        actionMap.set(actionKey, newAction);
+        fases[row.fase].push(newAction);
+      }
+      const action = actionMap.get(actionKey)!;
+      action.subacoes.push({
+        id: `S${row.fase.charAt(0).toUpperCase()}.${rowIdx + 1}`,
+        nome: row.subacao,
+        resp: row.responsavel,
+        gut: 0,
+        indicador: "",
+        meta: row.prazo || "",
+        resultado: "",
+        status: row.status,
+        prazo: row.prazo || "",
       });
     });
 
-    const title = pdcaRows[0]?.subacao || id;
+    const statusList = pdcaRows.map(r => r.status.toLowerCase());
+    const allDone = statusList.every(s => s.includes("conclu"));
+    const anyExec = statusList.some(s => s.includes("exec") || s.includes("andamento"));
+    const overallStatus = allDone ? "Concluido" : anyExec ? "Em Execucao" : "Pendente";
+
     return {
       id,
-      titulo: title.substring(0, 100),
+      titulo: id.substring(0, 100),
       area: pdcaRows[0]?.responsavel || "",
-      situacao: pdcaRows[0]?.status || "Pendente",
+      situacao: `Importado via Excel — ${pdcaRows.length} subações`,
       causas: "",
-      analise_gut: { g: 1, u: 1, t: 1, total: 1 },
-      fases,
-      status: "Pendente",
+      analise_gut: { g: 0, u: 0, t: 0, total: 0 },
+      fases: fases as PdcaRecord["fases"],
+      status: overallStatus,
       fonteArquivo: "Excel Import",
       atualizadoEm: new Date().toISOString()
     };
@@ -334,7 +347,7 @@ export function ImportView({ onRefresh, onImport, onDataImported }: ImportViewPr
   return (
     <div className="space-y-5" style={{ backgroundColor: COLORS.bg, padding: "16px" }}>
       {/* Header com Glow */}
-      <div className="relative rounded-2xl border border-cyan-500/30 bg-cyan-950/20 p-6" style={{ boxShadow: `0_0_30px_${COLORS.neonGlow}` }}>
+      <div className="relative rounded-2xl border border-cyan-500/30 bg-cyan-950/20 p-6" style={{ boxShadow: `0 0 30px ${COLORS.neonGlow}` }}>
         <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-cyan-500/5 to-blue-500/5 pointer-events-none" />
         <div className="relative flex items-center justify-between">
           <div>
@@ -357,7 +370,7 @@ export function ImportView({ onRefresh, onImport, onDataImported }: ImportViewPr
             <button
               onClick={() => fileInputRef.current?.click()}
               className="flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium text-white transition-all hover:scale-105"
-              style={{ background: `linear-gradient(135deg, ${COLORS.neon}, ${COLORS.neonSecondary})`, boxShadow: `0_0_20px_${COLORS.neonGlow}` }}
+              style={{ background: `linear-gradient(135deg, ${COLORS.neon}, ${COLORS.neonSecondary})`, boxShadow: `0 0 20px ${COLORS.neonGlow}` }}
             >
               <Upload className="h-4 w-4" />
               Importar Excel
@@ -408,7 +421,7 @@ export function ImportView({ onRefresh, onImport, onDataImported }: ImportViewPr
               className="rounded-2xl border-2 border-dashed p-8 transition-all hover:scale-[1.01]"
               style={{ 
                 borderColor: COLORS.neon, 
-                boxShadow: `0_0_30px_${COLORS.neonGlow}`,
+                boxShadow: `0 0 30px ${COLORS.neonGlow}`,
                 backgroundColor: "rgba(0, 212, 255, 0.03)"
               }}
             >
@@ -434,7 +447,7 @@ export function ImportView({ onRefresh, onImport, onDataImported }: ImportViewPr
                   className="mt-6 rounded-lg px-6 py-2 text-sm font-medium text-white transition-all hover:scale-105"
                   style={{ 
                     background: `linear-gradient(135deg, ${COLORS.neon}, ${COLORS.neonSecondary})`,
-                    boxShadow: `0_0_20px_${COLORS.neonGlow}`
+                    boxShadow: `0 0 20px ${COLORS.neonGlow}`
                   }}
                 >
                   Selecionar arquivo Excel
@@ -446,7 +459,7 @@ export function ImportView({ onRefresh, onImport, onDataImported }: ImportViewPr
 
           {/* Validation Errors */}
           {currentStep === "validacao" && errors.length > 0 && (
-            <div className="rounded-2xl border border-red-500/50 bg-red-950/20 p-6" style={{ boxShadow: `0_0_20px_rgba(239, 68, 68, 0.2)` }}>
+            <div className="rounded-2xl border border-red-500/50 bg-red-950/20 p-6" style={{ boxShadow: `0 0 20px rgba(239, 68, 68, 0.2)` }}>
               <div className="flex items-center gap-3">
                 <XCircle className="h-6 w-6" style={{ color: COLORS.error }} />
                 <h3 className="text-lg font-semibold" style={{ color: COLORS.white }}>Erros na Validação</h3>
@@ -530,7 +543,7 @@ export function ImportView({ onRefresh, onImport, onDataImported }: ImportViewPr
                 className="flex items-center gap-2 rounded-lg px-6 py-2 text-sm font-medium text-white transition-all hover:scale-105 disabled:opacity-50"
                 style={{ 
                   background: `linear-gradient(135deg, ${COLORS.neon}, ${COLORS.neonSecondary})`,
-                  boxShadow: `0_0_20px_${COLORS.neonGlow}`
+                  boxShadow: `0 0 20px ${COLORS.neonGlow}`
                 }}
               >
                 {importing ? (
@@ -547,7 +560,7 @@ export function ImportView({ onRefresh, onImport, onDataImported }: ImportViewPr
 
           {/* Success */}
           {success && (
-            <div className="rounded-2xl border border-emerald-500/50 bg-emerald-950/20 p-6" style={{ boxShadow: `0_0_20px_rgba(16, 185, 129, 0.2)` }}>
+            <div className="rounded-2xl border border-emerald-500/50 bg-emerald-950/20 p-6" style={{ boxShadow: `0 0 20px rgba(16, 185, 129, 0.2)` }}>
               <div className="flex items-center gap-3">
                 <CheckCircle className="h-6 w-6" style={{ color: COLORS.success }} />
                 <div>

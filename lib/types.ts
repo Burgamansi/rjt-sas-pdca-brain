@@ -9,6 +9,9 @@ export type PdcaSubaction = {
   meta: string;
   resultado: string;
   status: string;
+  comoFazer?: string;
+  prazo?: string;
+  evidenciaSgq?: string;
 };
 
 export type PdcaAction = {

@@ -1,6 +1,10 @@
-import { Activity, Percent } from "lucide-react";
+"use client";
+
+import { useState } from "react";
+import { ChevronDown, ChevronRight, ExternalLink } from "lucide-react";
 import { PdcaPhase, PdcaRecord } from "@/lib/types";
-import { PdcaGridRow, groupByPhase, mapPdcaToGridRows } from "@/lib/pdca-front-mapper";
+import { PdcaAction } from "@/lib/types";
+import { PdcaGridRow, mapPdcaToGridRows } from "@/lib/pdca-front-mapper";
 import { useAppState } from "@/lib/app-state";
 
 type TableGridPDCAProps = {
@@ -12,51 +16,50 @@ type TableGridPDCAProps = {
   onSelectSubAction?: (subaction: PdcaGridRow) => void;
 };
 
-type StatusKind = "done" | "progress" | "late";
-
-const phaseStyle: Record<PdcaPhase, { label: string; bar: string; chip: string; block: string; row: string }> = {
+const PHASE_STYLE: Record<PdcaPhase, {
+  label: string;
+  bar: string;
+  chip: string;
+  headerBg: string;
+  actionBg: string;
+  rowBg: string;
+  border: string;
+}> = {
   plan: {
     label: "PLAN",
-    bar: "bg-blue-400",
-    chip: "border-blue-300/40 bg-blue-400/10 text-blue-200",
-    block: "border-blue-400/25 bg-blue-500/[0.05]",
-    row: "bg-blue-500/[0.05]",
+    bar: "bg-blue-500",
+    chip: "border-blue-400/50 bg-blue-500/15 text-blue-300",
+    headerBg: "bg-blue-900/40 border-blue-500/30",
+    actionBg: "bg-blue-900/20 hover:bg-blue-900/35",
+    rowBg: "hover:bg-blue-500/5",
+    border: "border-blue-500/20",
   },
   do: {
     label: "DO",
-    bar: "bg-emerald-400",
-    chip: "border-emerald-300/40 bg-emerald-400/10 text-emerald-200",
-    block: "border-emerald-400/25 bg-emerald-500/[0.05]",
-    row: "bg-emerald-500/[0.05]",
+    bar: "bg-emerald-500",
+    chip: "border-emerald-400/50 bg-emerald-500/15 text-emerald-300",
+    headerBg: "bg-emerald-900/40 border-emerald-500/30",
+    actionBg: "bg-emerald-900/20 hover:bg-emerald-900/35",
+    rowBg: "hover:bg-emerald-500/5",
+    border: "border-emerald-500/20",
   },
   check: {
     label: "CHECK",
-    bar: "bg-amber-400",
-    chip: "border-amber-300/40 bg-amber-400/10 text-amber-200",
-    block: "border-amber-400/25 bg-amber-500/[0.05]",
-    row: "bg-amber-500/[0.05]",
+    bar: "bg-amber-500",
+    chip: "border-amber-400/50 bg-amber-500/15 text-amber-300",
+    headerBg: "bg-amber-900/40 border-amber-500/30",
+    actionBg: "bg-amber-900/20 hover:bg-amber-900/35",
+    rowBg: "hover:bg-amber-500/5",
+    border: "border-amber-500/20",
   },
   act: {
     label: "ACT",
-    bar: "bg-rose-400",
-    chip: "border-rose-300/40 bg-rose-400/10 text-rose-200",
-    block: "border-rose-400/25 bg-rose-500/[0.05]",
-    row: "bg-rose-500/[0.05]",
-  },
-};
-
-const statusStyle: Record<StatusKind, { label: string; className: string }> = {
-  done: {
-    label: "Concluido",
-    className: "border-emerald-300/45 bg-emerald-400/10 text-emerald-200",
-  },
-  progress: {
-    label: "Em andamento",
-    className: "border-amber-300/45 bg-amber-400/10 text-amber-200",
-  },
-  late: {
-    label: "Atrasado",
-    className: "border-rose-300/45 bg-rose-400/10 text-rose-200",
+    bar: "bg-rose-500",
+    chip: "border-rose-400/50 bg-rose-500/15 text-rose-300",
+    headerBg: "bg-rose-900/40 border-rose-500/30",
+    actionBg: "bg-rose-900/20 hover:bg-rose-900/35",
+    rowBg: "hover:bg-rose-500/5",
+    border: "border-rose-500/20",
   },
 };
 
@@ -71,266 +74,345 @@ function normalizeText(value: unknown): string {
 function parsePrazo(value: string): Date | null {
   const raw = String(value ?? "").trim();
   if (!raw) return null;
-
   const brDate = raw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})/);
   if (brDate) {
     const day = Number(brDate[1]);
     const month = Number(brDate[2]) - 1;
     const yearRaw = Number(brDate[3]);
     const year = yearRaw < 100 ? 2000 + yearRaw : yearRaw;
-    const parsed = new Date(year, month, day, 23, 59, 59, 999);
+    const parsed = new Date(year, month, day, 23, 59, 59);
     return Number.isNaN(parsed.getTime()) ? null : parsed;
   }
-
   const iso = new Date(raw);
-  if (Number.isNaN(iso.getTime())) return null;
-  return iso;
+  return Number.isNaN(iso.getTime()) ? null : iso;
 }
 
-function statusKind(status: string, prazo: string): StatusKind {
-  const normalized = normalizeText(status);
-  if (normalized.includes("conclu") || normalized.includes("finaliz") || normalized.includes("done")) {
-    return "done";
-  }
-  if (normalized.includes("atras")) return "late";
-
+function statusKind(status: string, prazo: string): "done" | "late" | "progress" | "pending" {
+  const norm = normalizeText(status);
+  if (norm.includes("conclu") || norm.includes("done")) return "done";
+  if (norm.includes("atras")) return "late";
   const deadline = parsePrazo(prazo);
-  if (deadline && deadline.getTime() < Date.now()) {
-    return "late";
-  }
-
-  return "progress";
+  if (deadline && deadline.getTime() < Date.now()) return "late";
+  if (norm.includes("exec") || norm.includes("aberto") || norm.includes("aguard") || norm.includes("andamento")) return "progress";
+  return "pending";
 }
 
-function selectedPdca(pdcas: PdcaRecord[], selectedPdcaId: string): PdcaRecord | null {
+const STATUS_STYLE = {
+  done: "border-emerald-400/50 bg-emerald-500/15 text-emerald-300",
+  late: "border-rose-400/50 bg-rose-500/15 text-rose-300",
+  progress: "border-amber-400/50 bg-amber-500/15 text-amber-300",
+  pending: "border-slate-500/50 bg-slate-700/30 text-slate-400",
+};
+
+const STATUS_LABEL = {
+  done: "Concluído",
+  late: "Atrasado",
+  progress: "Em Andamento",
+  pending: "Pendente",
+};
+
+type ActionGroup = {
+  action: PdcaAction;
+  phase: PdcaPhase;
+  rows: PdcaGridRow[];
+};
+
+type PhaseGroup = {
+  phase: PdcaPhase;
+  actions: ActionGroup[];
+};
+
+function buildHierarchy(pdca: PdcaRecord, rows: PdcaGridRow[]): PhaseGroup[] {
+  const phases: PdcaPhase[] = ["plan", "do", "check", "act"];
+  const result: PhaseGroup[] = [];
+
+  for (const phase of phases) {
+    const actions = pdca.fases[phase] ?? [];
+    if (!actions.length) continue;
+
+    const actionGroups: ActionGroup[] = [];
+    for (const action of actions) {
+      const actionRows = rows.filter((r) => r.phase === phase && r.acaoId === action.id);
+      if (actionRows.length) {
+        actionGroups.push({ action, phase, rows: actionRows });
+      }
+    }
+
+    if (actionGroups.length) {
+      result.push({ phase, actions: actionGroups });
+    }
+  }
+
+  return result;
+}
+
+function selectedPdca(pdcas: PdcaRecord[], id: string): PdcaRecord | null {
   if (!pdcas.length) return null;
-  return pdcas.find((pdca) => pdca.id === selectedPdcaId) ?? pdcas[0];
+  return pdcas.find((p) => p.id === id) ?? pdcas[0];
 }
 
-function rowKey(row: PdcaGridRow, index: number): string {
-  return `${row.phase}-${row.acao}-${row.subacao}-${index}`;
-}
+export function TableGridPDCA({
+  pdcas,
+  selectedPdcaId,
+  onSelectPdca,
+  loading,
+  localMode,
+  onSelectSubAction,
+}: TableGridPDCAProps) {
+  const { selectedFilter, selectedPhase, setSelectedPhase, setSelectedActionId, selectedActionId, searchTerm } = useAppState();
+  const [collapsedActions, setCollapsedActions] = useState<Set<string>>(new Set());
 
-function resultPercent(value: string): number | null {
-  const raw = String(value ?? "").trim();
-  if (!raw) return null;
-
-  const withPercent = raw.match(/(-?\d+(?:[.,]\d+)?)\s*%/);
-  if (withPercent?.[1]) {
-    const parsed = Number(withPercent[1].replace(",", "."));
-    return Number.isFinite(parsed) ? Math.round(parsed) : null;
-  }
-
-  const justNumber = raw.match(/^(-?\d+(?:[.,]\d+)?)$/);
-  if (!justNumber?.[1]) return null;
-  const parsed = Number(justNumber[1].replace(",", "."));
-  if (!Number.isFinite(parsed)) return null;
-  if (parsed < 0 || parsed > 100) return null;
-  return Math.round(parsed);
-}
-
-function progressBarColor(percent: number): string {
-  if (percent >= 90) return "bg-emerald-400";
-  if (percent >= 70) return "bg-amber-400";
-  return "bg-rose-400";
-}
-
-function progressBarWidth(percent: number): string {
-  if (percent >= 90) return "w-[90%]";
-  if (percent >= 70) return "w-[70%]";
-  return "w-[50%]";
-}
-
-export function TableGridPDCA({ pdcas, selectedPdcaId, onSelectPdca, loading, localMode, onSelectSubAction }: TableGridPDCAProps) {
-  const { selectedFilter, selectedPhase, setSelectedPhase, searchTerm } = useAppState();
   const current = selectedPdca(pdcas, selectedPdcaId);
+
   let rows = current ? mapPdcaToGridRows(current) : [];
-  
-  // Aplicar filtros mestres
+
   if (searchTerm) {
     const term = searchTerm.toLowerCase();
-    rows = rows.filter(row => 
-      row.subacao.toLowerCase().includes(term) ||
-      row.acao.toLowerCase().includes(term) ||
-      row.responsavel.toLowerCase().includes(term)
+    rows = rows.filter(
+      (r) =>
+        (r.subacao ?? "").toLowerCase().includes(term) ||
+        (r.acao ?? "").toLowerCase().includes(term) ||
+        (r.responsavel ?? "").toLowerCase().includes(term)
     );
   }
   if (selectedPhase !== "all") {
-    rows = rows.filter(row => row.phase === selectedPhase);
+    rows = rows.filter((r) => r.phase === selectedPhase);
   }
   if (selectedFilter !== "all") {
-    const statusMap: Record<string, string> = {
-      done: "conclu",
-      progress: "exec",
-      late: "atras",
-      pending: "pendente"
-    };
-    rows = rows.filter(row => row.status.toLowerCase().includes(statusMap[selectedFilter]));
+    const map: Record<string, string> = { done: "conclu", progress: "exec", late: "atras", pending: "pendente" };
+    const needle = map[selectedFilter] ?? "";
+    rows = rows.filter((r) => (r.status ?? "").toLowerCase().includes(needle));
   }
-  
-  const groupedRows = groupByPhase(rows);
+  if (selectedActionId) {
+    rows = rows.filter((r) => r.acaoId === selectedActionId);
+  }
+
+  const hierarchy = current ? buildHierarchy(current, rows) : [];
+
+  function toggleAction(actionKey: string) {
+    setCollapsedActions((prev) => {
+      const next = new Set(prev);
+      if (next.has(actionKey)) {
+        next.delete(actionKey);
+      } else {
+        next.add(actionKey);
+      }
+      return next;
+    });
+  }
+
+  function handleClickAction(acaoId: string) {
+    setSelectedActionId(selectedActionId === acaoId ? "" : acaoId);
+  }
 
   return (
     <section className="rounded-3xl border border-white/10 bg-white/[0.03] p-5 shadow-[0_28px_55px_-35px_rgba(15,23,42,0.9)]">
+      {/* Header */}
       <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h3 className="text-xl font-bold text-white">PDCA Executivo</h3>
-          <p className="mt-2 text-sm text-slate-300 font-medium leading-relaxed">
-            Matriz de Ações - ETAPA | AÇÃO | SUBAÇÃO | RESPONSÁVEL | RESULTADO | STATUS | PRAZO
+          <h3 className="text-xl font-bold text-white">PDCA Brain — Grid Executivo</h3>
+          <p className="mt-1 text-xs text-slate-400 font-medium tracking-wide uppercase">
+            PDCA → AÇÃO PRINCIPAL → SUBAÇÃO
           </p>
         </div>
-
-        <label className="text-sm font-medium text-slate-200">
+        <label className="text-sm font-medium text-slate-300">
           Selecionar PDCA
           <select
-            className="mt-2 block min-w-56 rounded-xl border border-slate-600 bg-slate-800 px-4 py-2.5 text-sm font-medium text-white focus:border-cyan-400 focus:outline-none"
+            className="mt-1 block min-w-56 rounded-xl border border-slate-600 bg-slate-800 px-4 py-2 text-sm font-medium text-white focus:border-cyan-400 focus:outline-none"
             value={current?.id ?? ""}
-            onChange={(event) => onSelectPdca(event.target.value)}
+            onChange={(e) => onSelectPdca(e.target.value)}
             disabled={!pdcas.length}
           >
-            {pdcas.map((pdca) => (
-              <option key={pdca.id} value={pdca.id}>
-                {pdca.id} - {pdca.titulo}
+            {pdcas.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.id} — {p.titulo}
               </option>
             ))}
           </select>
         </label>
       </div>
 
+      {/* Filtros de fase */}
       <div className="mb-4 flex flex-wrap gap-2 text-xs">
-        {(["plan", "do", "check", "act"] as PdcaPhase[]).map((phase) => (
-          <button
-            key={phase}
-            onClick={() => setSelectedPhase(selectedPhase === phase ? "all" : phase)}
-            className={`inline-flex items-center gap-2 rounded-full border px-2.5 py-1 font-medium ${
-              selectedPhase === phase 
-                ? "ring-2 ring-white/50 " + phaseStyle[phase].chip 
-                : phaseStyle[phase].chip
-            } hover:opacity-80 transition-all`}
-          >
-            <span className={`h-2 w-2 rounded-full ${phaseStyle[phase].bar}`} />
-            {phaseStyle[phase].label}
-          </button>
-        ))}
+        {(["plan", "do", "check", "act"] as PdcaPhase[]).map((phase) => {
+          const s = PHASE_STYLE[phase];
+          const active = selectedPhase === phase;
+          return (
+            <button
+              key={phase}
+              onClick={() => setSelectedPhase(active ? "all" : phase)}
+              className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 font-semibold transition-all ${s.chip} ${active ? "ring-2 ring-white/40 scale-105" : "opacity-70 hover:opacity-100"}`}
+            >
+              <span className={`h-2 w-2 rounded-full ${s.bar}`} />
+              {s.label}
+            </button>
+          );
+        })}
         <button
-          onClick={() => setSelectedPhase("all")}
-          className={`inline-flex items-center gap-2 rounded-full border px-2.5 py-1 font-medium ${
-            selectedPhase === "all"
-              ? "ring-2 ring-white/50 border-slate-400 bg-slate-700 text-white"
+          onClick={() => { setSelectedPhase("all"); setSelectedActionId(""); }}
+          className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 font-semibold transition-all ${
+            selectedPhase === "all" && !selectedActionId
+              ? "border-cyan-400/60 bg-cyan-500/15 text-cyan-300 ring-2 ring-cyan-400/30"
               : "border-slate-600 bg-slate-800 text-slate-400 hover:text-white"
-          } hover:opacity-80 transition-all`}
+          }`}
         >
           Todos
         </button>
+        {selectedActionId && (
+          <button
+            onClick={() => setSelectedActionId("")}
+            className="inline-flex items-center gap-1 rounded-full border border-cyan-400/40 bg-cyan-500/10 px-3 py-1 text-xs font-medium text-cyan-300 hover:bg-cyan-500/20"
+          >
+            ✕ Limpar filtro ação
+          </button>
+        )}
       </div>
 
-      {loading ? <p className="rounded-xl border border-slate-700/60 bg-slate-900/45 p-4 text-sm text-slate-300">Carregando dados...</p> : null}
-      {!loading && !pdcas.length ? (
-        <p className="rounded-xl border border-slate-700/60 bg-slate-900/45 p-4 text-sm text-slate-300">
-          {localMode ? "Sem PDCAs carregados nesta sessao local." : "Ainda sem PDCAs sincronizados no Supabase."}
+      {/* Estados vazios */}
+      {loading && (
+        <p className="rounded-xl border border-slate-700/60 bg-slate-900/45 p-4 text-sm text-slate-400">
+          Carregando dados...
         </p>
-      ) : null}
+      )}
+      {!loading && !pdcas.length && (
+        <p className="rounded-xl border border-slate-700/60 bg-slate-900/45 p-4 text-sm text-slate-400">
+          {localMode ? "Sem PDCAs carregados nesta sessão local." : "Ainda sem PDCAs sincronizados no Supabase."}
+        </p>
+      )}
 
-      {groupedRows.length ? (
-        <div className="space-y-4">
-          {groupedRows.map((group) => {
-            const phase = phaseStyle[group.phase];
-
+      {/* Grid Hierárquico */}
+      {!loading && hierarchy.length > 0 && (
+        <div className="space-y-5">
+          {hierarchy.map(({ phase, actions }) => {
+            const ps = PHASE_STYLE[phase];
             return (
-              <section key={group.phase} className={`overflow-hidden rounded-2xl border ${phase.block}`}>
-                <div className="flex items-center gap-3 border-b border-slate-800/70 bg-slate-950/55 px-3 py-2">
-                  <span className={`h-8 w-1.5 rounded-full ${phase.bar}`} />
-                  <h4 className="text-sm font-semibold text-slate-100">{phase.label}</h4>
-                  <span className="text-xs text-slate-400">{group.rows.length} subacoes</span>
+              <div key={phase} className={`overflow-hidden rounded-2xl border ${ps.border} bg-slate-950/40`}>
+                {/* Header da fase */}
+                <div className={`flex items-center gap-3 px-4 py-2.5 border-b ${ps.headerBg}`}>
+                  <span className={`h-5 w-1.5 rounded-full ${ps.bar}`} />
+                  <span className="text-sm font-bold text-white tracking-widest">{ps.label}</span>
+                  <span className="text-xs text-slate-400">{actions.reduce((a, g) => a + g.rows.length, 0)} subações</span>
                 </div>
 
-                <div className="overflow-x-auto">
-                  <table className="min-w-[980px] w-full text-left text-sm font-medium">
-                    <thead className="bg-slate-800 text-slate-200 border-b border-slate-700">
-                      <tr>
-                        <th className="px-4 py-3 font-semibold text-slate-200">ETAPA</th>
-                        <th className="px-4 py-3 font-semibold text-slate-200">AÇÃO</th>
-                        <th className="px-4 py-3 font-semibold text-slate-200">SUBAÇÃO</th>
-                        <th className="px-4 py-3 font-semibold text-slate-200">RESPONSÁVEL</th>
-                        <th className="px-4 py-3 font-semibold text-slate-200">RESULTADO</th>
-                        <th className="px-4 py-3 font-semibold text-slate-200">STATUS</th>
-                        <th className="px-4 py-3 font-semibold text-slate-200">PRAZO</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-700 bg-slate-900/50">
-                      {group.rows.map((row, index) => {
-                        const kind = statusKind(row.status, row.prazo);
-                        const status = statusStyle[kind];
-                        const late = kind === "late";
-                        const percent = resultPercent(row.resultado);
+                {/* Ações */}
+                <div className="divide-y divide-slate-800/60">
+                  {actions.map(({ action, rows: subRows }) => {
+                    const actionKey = `${phase}-${action.id}`;
+                    const collapsed = collapsedActions.has(actionKey);
+                    const isFiltered = selectedActionId === action.id;
+                    const doneCount = subRows.filter((r) => statusKind(r.status, r.prazo) === "done").length;
 
-                        return (
-                          <tr key={rowKey(row, index)} className={`${phase.row} text-slate-100`}>
-                            <td className="px-3 py-2.5">
-                              <div className="inline-flex items-center gap-2">
-                                <span className={`h-6 w-1 rounded-full ${phase.bar}`} />
-                                <span className={`inline-flex rounded-full border px-2 py-0.5 text-xs font-semibold ${phase.chip}`}>
-                                  {phase.label}
-                                </span>
-                              </div>
-                            </td>
-                            <td className="px-3 py-2.5 text-slate-100">{row.acao || "--"}</td>
-                            <td className="px-4 py-3 text-white font-semibold cursor-pointer hover:text-cyan-300 transition-colors" onClick={() => onSelectSubAction?.(row)}>
-                                {row.subacao || "--"}
-                              </td>
-                            <td className="px-4 py-3 text-white font-medium">{row.responsavel || "--"}</td>
-                            <td className="px-4 py-3">
-                              <div className="flex flex-col gap-1">
-                                <div className="flex items-center gap-2">
-                                  <Activity className="h-4 w-4 text-cyan-400" />
-                                  <span className="text-white font-medium">{row.resultado || "--"}</span>
-                                  {percent !== null ? (
-                                    <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-semibold ${
-                                      percent >= 90 ? 'border-emerald-400 bg-emerald-500/20 text-emerald-300' :
-                                      percent >= 70 ? 'border-amber-400 bg-amber-500/20 text-amber-300' :
-                                      'border-rose-400 bg-rose-500/20 text-rose-300'
-                                    }`}>
-                                      <Percent className="h-3 w-3" />
-                                      {percent}%
-                                    </span>
-                                  ) : null}
-                                </div>
-                                {percent !== null && (
-                                  <div className="h-1.5 w-full rounded-full bg-slate-700 overflow-hidden">
-                                    <div
-                                      className={`h-full rounded-full transition-all duration-300 ${
-                                        percent >= 90 ? 'bg-emerald-500' :
-                                        percent >= 70 ? 'bg-amber-500' :
-                                        'bg-rose-500'
-                                      }`}
-                                      style={{ width: `${percent}%` }}
-                                    />
-                                  </div>
-                                )}
-                              </div>
-                            </td>
-                            <td className="px-4 py-3">
-                              <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold ${status.className}`}>
-                                {status.label}
-                              </span>
-                            </td>
-                            <td className={`px-3 py-2.5 ${late ? "text-rose-300" : "text-slate-200"}`}>{row.prazo || "--"}</td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
+                    return (
+                      <div key={actionKey}>
+                        {/* Linha de ação */}
+                        <div
+                          className={`flex items-center gap-3 px-4 py-2.5 cursor-pointer transition-colors ${ps.actionBg} ${isFiltered ? "ring-1 ring-inset ring-cyan-400/30" : ""}`}
+                          onClick={() => toggleAction(actionKey)}
+                        >
+                          <button
+                            className="text-slate-400 hover:text-white flex-shrink-0"
+                            onClick={(e) => { e.stopPropagation(); toggleAction(actionKey); }}
+                          >
+                            {collapsed ? (
+                              <ChevronRight className="h-4 w-4" />
+                            ) : (
+                              <ChevronDown className="h-4 w-4" />
+                            )}
+                          </button>
+                          <span
+                            className={`flex-1 text-sm font-semibold text-white hover:text-cyan-300 transition-colors`}
+                            onClick={(e) => { e.stopPropagation(); handleClickAction(action.id); }}
+                          >
+                            {action.id} — {action.acao}
+                          </span>
+                          <span className="text-xs text-slate-400 flex-shrink-0">
+                            {doneCount}/{subRows.length}
+                          </span>
+                          <div className="w-16 h-1.5 rounded-full bg-slate-700 overflow-hidden flex-shrink-0">
+                            <div
+                              className={`h-full rounded-full ${ps.bar}`}
+                              style={{ width: `${subRows.length ? (doneCount / subRows.length) * 100 : 0}%` }}
+                            />
+                          </div>
+                        </div>
+
+                        {/* Subações */}
+                        {!collapsed && (
+                          <div className="overflow-x-auto">
+                            <table className="min-w-[900px] w-full text-sm">
+                              <thead>
+                                <tr className="bg-slate-900/60 border-b border-slate-800">
+                                  <th className="pl-10 pr-3 py-2 text-left text-xs font-semibold text-slate-400 uppercase tracking-wide">Subação</th>
+                                  <th className="px-3 py-2 text-left text-xs font-semibold text-slate-400 uppercase tracking-wide">Como Fazer</th>
+                                  <th className="px-3 py-2 text-left text-xs font-semibold text-slate-400 uppercase tracking-wide">Responsável</th>
+                                  <th className="px-3 py-2 text-left text-xs font-semibold text-slate-400 uppercase tracking-wide">Prazo</th>
+                                  <th className="px-3 py-2 text-left text-xs font-semibold text-slate-400 uppercase tracking-wide">Evidência SGQ</th>
+                                  <th className="px-3 py-2 text-left text-xs font-semibold text-slate-400 uppercase tracking-wide">Status</th>
+                                  <th className="px-3 py-2 text-center text-xs font-semibold text-slate-400 uppercase tracking-wide">Ver</th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-slate-800/40">
+                                {subRows.map((row, idx) => {
+                                  const kind = statusKind(row.status, row.prazo);
+                                  return (
+                                    <tr
+                                      key={`${row.subacaoId}-${idx}`}
+                                      className={`${ps.rowBg} transition-colors`}
+                                    >
+                                      <td
+                                        className="pl-10 pr-3 py-2.5 font-medium text-white cursor-pointer hover:text-cyan-300 transition-colors max-w-[240px]"
+                                        onClick={() => onSelectSubAction?.(row)}
+                                      >
+                                        <span className="line-clamp-2">{row.subacao || "—"}</span>
+                                      </td>
+                                      <td className="px-3 py-2.5 text-slate-300 max-w-[200px]">
+                                        <span className="line-clamp-2 text-xs">{row.comoFazer || "—"}</span>
+                                      </td>
+                                      <td className="px-3 py-2.5 text-slate-200 whitespace-nowrap text-xs font-medium">
+                                        {row.responsavel || "—"}
+                                      </td>
+                                      <td className={`px-3 py-2.5 whitespace-nowrap text-xs font-medium ${kind === "late" ? "text-rose-400" : "text-slate-300"}`}>
+                                        {row.prazo || "—"}
+                                      </td>
+                                      <td className="px-3 py-2.5 text-slate-400 max-w-[180px]">
+                                        <span className="line-clamp-1 text-xs">{row.evidenciaSgq || "—"}</span>
+                                      </td>
+                                      <td className="px-3 py-2.5">
+                                        <span className={`inline-flex rounded-full border px-2.5 py-0.5 text-xs font-semibold whitespace-nowrap ${STATUS_STYLE[kind]}`}>
+                                          {STATUS_LABEL[kind]}
+                                        </span>
+                                      </td>
+                                      <td className="px-3 py-2.5 text-center">
+                                        <button
+                                          className="inline-flex items-center justify-center rounded-lg border border-cyan-500/30 bg-cyan-500/10 p-1.5 text-cyan-400 hover:bg-cyan-500/20 transition-colors"
+                                          onClick={() => onSelectSubAction?.(row)}
+                                          title="Ver detalhes"
+                                        >
+                                          <ExternalLink className="h-3.5 w-3.5" />
+                                        </button>
+                                      </td>
+                                    </tr>
+                                  );
+                                })}
+                              </tbody>
+                            </table>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
-              </section>
+              </div>
             );
           })}
         </div>
-      ) : null}
-      {!loading && current && !rows.length ? (
-        <p className="rounded-xl border border-slate-700/60 bg-slate-900/45 p-4 text-sm text-slate-300">
-          Este PDCA nao possui subacoes para exibir.
+      )}
+
+      {!loading && current && !hierarchy.length && (
+        <p className="rounded-xl border border-slate-700/60 bg-slate-900/45 p-4 text-sm text-slate-400">
+          Nenhuma subação para exibir com os filtros atuais.
         </p>
-      ) : null}
+      )}
     </section>
   );
 }

@@ -5,12 +5,16 @@ type AnyObject = Record<string, unknown>;
 export type PdcaGridRow = {
   etapa: PdcaAction["etapa"];
   phase: PdcaPhase;
+  acaoId: string;
+  subacaoId: string;
   acao: string;
   subacao: string;
+  comoFazer: string;
   responsavel: string;
   resultado: string;
   status: string;
   prazo: string;
+  evidenciaSgq: string;
 };
 
 export type PdcaPhaseGroup = {
@@ -102,6 +106,9 @@ function normalizeSubaction(source: unknown, phase: PdcaPhase, subIndex: number)
     meta: text(item.meta ?? item.prazo ?? item.deadline ?? item.dueDate, ""),
     resultado: text(item.resultado ?? item.result ?? item.evidencia ?? item.evidence, ""),
     status: text(item.status ?? item.situacao ?? item.state, "Em andamento"),
+    comoFazer: text(item.comoFazer ?? item.como_fazer ?? item.howTo, ""),
+    prazo: text(item.prazo ?? item.deadline ?? item.dueDate ?? item.meta, ""),
+    evidenciaSgq: text(item.evidenciaSgq ?? item.evidencia_sgq ?? item.evidencia ?? item.evidence, ""),
   };
 }
 
@@ -173,12 +180,16 @@ export function mapPdcaToGridRows(pdca: PdcaRecord): PdcaGridRow[] {
         rows.push({
           etapa: action.etapa,
           phase,
+          acaoId: action.id,
+          subacaoId: subaction.id,
           acao: action.acao,
           subacao: subaction.nome,
+          comoFazer: subaction.comoFazer ?? "",
           responsavel: subaction.resp,
           resultado: subaction.resultado,
           status: subaction.status,
-          prazo: subaction.meta,
+          prazo: subaction.prazo ?? subaction.meta ?? "",
+          evidenciaSgq: subaction.evidenciaSgq ?? "",
         });
       }
     }

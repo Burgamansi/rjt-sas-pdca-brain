@@ -29,10 +29,12 @@ type SubActionData = {
   id: string;
   pdcaId: string;
   descricao: string;
+  comoFazer?: string;
   responsavel: string;
   prazo: string;
   status: string;
   progresso: number;
+  evidenciaSgq?: string;
 };
 
 type EvidenceDrawerProps = {
@@ -184,6 +186,18 @@ export function EvidenceDrawer({ isOpen, onClose, subAction }: EvidenceDrawerPro
                 <p className="text-xs text-slate-500 mb-1">Descrição</p>
                 <p className="text-sm font-medium text-white">{subAction.descricao}</p>
               </div>
+              {subAction.comoFazer && (
+                <div>
+                  <p className="text-xs text-slate-500 mb-1">Como Fazer</p>
+                  <p className="text-sm text-slate-200">{subAction.comoFazer}</p>
+                </div>
+              )}
+              {subAction.evidenciaSgq && (
+                <div>
+                  <p className="text-xs text-slate-500 mb-1">Evidência SGQ Esperada</p>
+                  <p className="text-sm text-cyan-300 font-medium">{subAction.evidenciaSgq}</p>
+                </div>
+              )}
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <p className="text-xs text-slate-500 mb-1">Responsável</p>
