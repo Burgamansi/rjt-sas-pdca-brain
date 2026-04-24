@@ -8,6 +8,7 @@ type TableGridPDCAProps = {
   onSelectPdca: (id: string) => void;
   loading: boolean;
   localMode: boolean;
+  onSelectSubAction?: (subaction: PdcaGridRow) => void;
 };
 
 type StatusKind = "done" | "progress" | "late";
@@ -139,7 +140,7 @@ function progressBarWidth(percent: number): string {
   return "w-[50%]";
 }
 
-export function TableGridPDCA({ pdcas, selectedPdcaId, onSelectPdca, loading, localMode }: TableGridPDCAProps) {
+export function TableGridPDCA({ pdcas, selectedPdcaId, onSelectPdca, loading, localMode, onSelectSubAction }: TableGridPDCAProps) {
   const current = selectedPdca(pdcas, selectedPdcaId);
   const rows = current ? mapPdcaToGridRows(current) : [];
   const groupedRows = groupByPhase(rows);
@@ -234,7 +235,9 @@ export function TableGridPDCA({ pdcas, selectedPdcaId, onSelectPdca, loading, lo
                               </div>
                             </td>
                             <td className="px-3 py-2.5 text-slate-100">{row.acao || "--"}</td>
-                            <td className="px-4 py-3 text-white font-semibold">{row.subacao || "--"}</td>
+                            <td className="px-4 py-3 text-white font-semibold cursor-pointer hover:text-cyan-300 transition-colors" onClick={() => onSelectSubAction?.(row)}>
+                                {row.subacao || "--"}
+                              </td>
                             <td className="px-4 py-3 text-white font-medium">{row.responsavel || "--"}</td>
                             <td className="px-4 py-3">
                               <div className="flex flex-col gap-1">

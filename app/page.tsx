@@ -7,6 +7,7 @@ import { PdcaImportResult, PdcaRecord } from "@/lib/types";
 import { ImportLogPanel } from "@/components/pdca/import-log-panel";
 import { KpiCard } from "@/components/pdca/kpi-card";
 import { TableGridPDCA } from "@/components/pdca/table-grid-pdca";
+import { EvidenceDrawer } from "@/components/pdca/evidence-drawer";
 import { Sidebar } from "@/components/pdca/sidebar";
 import { TopBar } from "@/components/pdca/top-bar";
 import { mapApiPdcas } from "@/lib/pdca-front-mapper";
@@ -110,6 +111,14 @@ function mergePdcaRecords(existing: PdcaRecord[], incoming: PdcaRecord[]): PdcaR
 export default function Page() {
   const [pdcas, setPdcas] = useState<PdcaRecord[]>([]);
   const [selectedPdcaId, setSelectedPdcaId] = useState<string>("");
+  const [selectedSubAction, setSelectedSubAction] = useState<{
+    id: string;
+    descricao: string;
+    responsavel: string;
+    prazo: string;
+    status: string;
+    progresso: number;
+  } | null>(null);
   const [loading, setLoading] = useState(true);
   const [importing, setImporting] = useState(false);
   const [localMode, setLocalMode] = useState(false);
@@ -388,6 +397,16 @@ export default function Page() {
             onSelectPdca={setSelectedPdcaId}
             loading={loading}
             localMode={localMode}
+            onSelectSubAction={(subaction) => {
+              setSelectedSubAction({
+                id: `${subaction.etapa}-${subaction.acao}`,
+                descricao: subaction.subacao,
+                responsavel: subaction.responsavel,
+                prazo: subaction.prazo,
+                status: subaction.status,
+                progresso: subaction.resultado ? parseInt(subaction.resultado.replace("%", "")) || 0 : 0,
+              });
+            }}
           />
 
           <div className="space-y-5">
@@ -413,6 +432,12 @@ export default function Page() {
             <ImportLogPanel logs={logs} formatDate={formatDate} />
           </div>
         </section>
+
+        <EvidenceDrawer
+          isOpen={!!selectedSubAction}
+          onClose={() => setSelectedSubAction(null)}
+          subAction={selectedSubAction}
+        />
       </main>
     </div>
   );
