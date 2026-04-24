@@ -174,7 +174,7 @@ export default function Page() {
   const stats = filteredStats;
 
   async function uploadExcelFiles(fileList: FileList | null) {
-    const files = Array.from(fileList ?? []).filter((file) => /\.(xlsx|xls)$/i.test(file.name));
+    const files = Array.from(fileList ?? []).filter((file) => /\.(xlsx|xls|docx)$/i.test(file.name));
     if (!files.length) return;
 
     setImporting(true);
@@ -185,15 +185,31 @@ export default function Page() {
 
     for (const file of files) {
       try {
-        const buffer = await file.arrayBuffer();
-        const pdca = parsePdcaWorkbookFromArrayBuffer(file.name, buffer);
+        let pdca: PdcaRecord;
+        if (/\.docx$/i.test(file.name)) {
+          const form = new FormData();
+          form.append("file", file);
+          const res = await fetch("/api/parse-docx", { method: "POST", body: form });
+          const payload = (await res.json()) as { ok: boolean; pdca?: PdcaRecord; message?: string; rowCount?: number };
+          if (!payload.ok || !payload.pdca) throw new Error(payload.message ?? "Falha ao processar DOCX.");
+          pdca = payload.pdca;
+          importResults.push({
+            ok: true,
+            file: file.name,
+            message: `PDCA ${pdca.id} importado via DOCX (${payload.rowCount} subações).`,
+            pdca,
+          });
+        } else {
+          const buffer = await file.arrayBuffer();
+          pdca = parsePdcaWorkbookFromArrayBuffer(file.name, buffer);
+          importResults.push({
+            ok: true,
+            file: file.name,
+            message: `PDCA ${pdca.id} pronto para sincronizar (${countSubacoes(pdca)} subacoes).`,
+            pdca,
+          });
+        }
         parsed.push(pdca);
-        importResults.push({
-          ok: true,
-          file: file.name,
-          message: `PDCA ${pdca.id} pronto para sincronizar (${countSubacoes(pdca)} subacoes).`,
-          pdca,
-        });
       } catch (error) {
         importResults.push({
           ok: false,
@@ -266,7 +282,7 @@ export default function Page() {
           ref={fileInputRef}
           hidden
           type="file"
-          accept=".xlsx,.xls"
+          accept=".xlsx,.xls,.docx"
           multiple
           onChange={async (event) => {
             await uploadExcelFiles(event.target.files);
