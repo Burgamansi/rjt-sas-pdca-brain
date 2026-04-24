@@ -6,18 +6,22 @@ import { PdcaGridRow } from "@/lib/pdca-front-mapper";
 
 export type PdcaFilter = "all" | "done" | "progress" | "late" | "pending";
 
+export type PdcaView = "painel" | "portfolio" | "importacao" | "persistencia";
+
 export type AppState = {
   selectedPdcaId: string;
   selectedPhase: PdcaPhase | "all";
   selectedFilter: PdcaFilter;
   selectedSubAction: PdcaGridRow | null;
   searchTerm: string;
+  activeView: PdcaView;
   
   setSelectedPdcaId: (id: string) => void;
   setSelectedPhase: (phase: PdcaPhase | "all") => void;
   setSelectedFilter: (filter: PdcaFilter) => void;
   setSelectedSubAction: (subaction: PdcaGridRow | null) => void;
   setSearchTerm: (term: string) => void;
+  setActiveView: (view: PdcaView) => void;
   
   clearFilters: () => void;
 };
@@ -30,6 +34,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
   const [selectedFilter, setSelectedFilter] = useState<PdcaFilter>("all");
   const [selectedSubAction, setSelectedSubAction] = useState<PdcaGridRow | null>(null);
   const [searchTerm, setSearchTerm] = useState<string>("");
+  const [activeView, setActiveView] = useState<PdcaView>("painel");
 
   const clearFilters = () => {
     setSelectedPhase("all");
@@ -43,13 +48,15 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     selectedFilter,
     selectedSubAction,
     searchTerm,
+    activeView,
     setSelectedPdcaId,
     setSelectedPhase,
     setSelectedFilter,
     setSelectedSubAction,
     setSearchTerm,
+    setActiveView,
     clearFilters,
-  }), [selectedPdcaId, selectedPhase, selectedFilter, selectedSubAction, searchTerm]);
+  }), [selectedPdcaId, selectedPhase, selectedFilter, selectedSubAction, searchTerm, activeView]);
 
   return (
     <AppStateContext.Provider value={value}>

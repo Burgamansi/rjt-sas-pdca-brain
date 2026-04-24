@@ -110,7 +110,7 @@ function mergePdcaRecords(existing: PdcaRecord[], incoming: PdcaRecord[]): PdcaR
 }
 
 export default function Page() {
-  const { selectedPdcaId, setSelectedPdcaId, selectedSubAction, setSelectedSubAction } = useAppState();
+  const { selectedPdcaId, setSelectedPdcaId, selectedSubAction, setSelectedSubAction, activeView } = useAppState();
   const [pdcas, setPdcas] = useState<PdcaRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [importing, setImporting] = useState(false);
@@ -310,132 +310,171 @@ export default function Page() {
           </section>
         ) : null}
 
-        <section className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
-          <KpiCard
-            title="PDCAs Ativos"
-            value={String(stats.pdcaCount)}
-            subtitle="Portfolio consolidado"
-            gradientClassName="bg-gradient-to-br from-sky-500 via-blue-500 to-indigo-600"
-            icon={Layers3}
-          />
-          <KpiCard
-            title="Subacoes"
-            value={String(stats.subactionCount)}
-            subtitle={`${stats.inProgress} em execucao`}
-            gradientClassName="bg-gradient-to-br from-violet-500 via-fuchsia-500 to-indigo-600"
-            icon={ListChecks}
-          />
-          <KpiCard
-            title="Concluidas"
-            value={String(stats.done)}
-            subtitle={`${stats.pending} pendentes`}
-            gradientClassName="bg-gradient-to-br from-emerald-500 via-teal-500 to-cyan-600"
-            icon={CheckCircle2}
-            filter="done"
-          />
-          <KpiCard
-            title="Em Andamento"
-            value={String(stats.inProgress)}
-            subtitle={`${stats.late} atrasadas`}
-            gradientClassName="bg-gradient-to-br from-amber-500 via-orange-500 to-yellow-500"
-            icon={Clock}
-            filter="progress"
-          />
-          <KpiCard
-            title="Atrasadas"
-            value={String(stats.late)}
-            subtitle={`${stats.critical} criticas`}
-            gradientClassName="bg-gradient-to-br from-rose-500 via-red-500 to-orange-600"
-            icon={AlertTriangle}
-            filter="late"
-          />
-          <KpiCard
-            title="Efetividade"
-            value={`${stats.completion}%`}
-            subtitle={`Media: ${stats.pdcaProgressAverage}%`}
-            gradientClassName="bg-gradient-to-br from-indigo-500 via-blue-500 to-cyan-500"
-            icon={Gauge}
-            filter="all"
-          />
-        </section>
+        {activeView === "painel" && (
+          <section className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+            <KpiCard
+              title="PDCAs Ativos"
+              value={String(stats.pdcaCount)}
+              subtitle="Portfolio consolidado"
+              gradientClassName="bg-gradient-to-br from-sky-500 via-blue-500 to-indigo-600"
+              icon={Layers3}
+            />
+            <KpiCard
+              title="Subacoes"
+              value={String(stats.subactionCount)}
+              subtitle={`${stats.inProgress} em execucao`}
+              gradientClassName="bg-gradient-to-br from-violet-500 via-fuchsia-500 to-indigo-600"
+              icon={ListChecks}
+            />
+            <KpiCard
+              title="Concluidas"
+              value={String(stats.done)}
+              subtitle={`${stats.pending} pendentes`}
+              gradientClassName="bg-gradient-to-br from-emerald-500 via-teal-500 to-cyan-600"
+              icon={CheckCircle2}
+              filter="done"
+            />
+            <KpiCard
+              title="Em Andamento"
+              value={String(stats.inProgress)}
+              subtitle={`${stats.late} atrasadas`}
+              gradientClassName="bg-gradient-to-br from-amber-500 via-orange-500 to-yellow-500"
+              icon={Clock}
+              filter="progress"
+            />
+            <KpiCard
+              title="Atrasadas"
+              value={String(stats.late)}
+              subtitle={`${stats.critical} criticas`}
+              gradientClassName="bg-gradient-to-br from-rose-500 via-red-500 to-orange-600"
+              icon={AlertTriangle}
+              filter="late"
+            />
+            <KpiCard
+              title="Efetividade"
+              value={`${stats.completion}%`}
+              subtitle={`Media: ${stats.pdcaProgressAverage}%`}
+              gradientClassName="bg-gradient-to-br from-indigo-500 via-blue-500 to-cyan-500"
+              icon={Gauge}
+              filter="all"
+            />
+          </section>
+        )}
 
-        <section className="mt-6 rounded-2xl border border-white/10 bg-white/[0.03] p-5">
-          <div className="flex items-center justify-between gap-4">
-            <div>
-              <h3 className="text-sm font-medium text-slate-300">Progresso Geral do PDCA</h3>
-              <p className="mt-1 text-xs text-slate-500">{stats.done} de {stats.subactionCount} subações concluídas</p>
-            </div>
-            <div className="flex items-center gap-3">
-              <div className="h-3 w-48 rounded-full bg-slate-700 overflow-hidden">
-                <div
-                  className={`h-full rounded-full transition-all duration-500 ${
-                    stats.completion >= 90 ? "bg-emerald-500" :
-                    stats.completion >= 70 ? "bg-amber-500" :
-                    "bg-rose-500"
-                  }`}
-                  style={{ width: `${stats.completion}%` }}
-                />
+        {activeView === "painel" && (
+          <section className="mt-6 rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <h3 className="text-sm font-medium text-slate-300">Progresso Geral do PDCA</h3>
+                <p className="mt-1 text-xs text-slate-500">{stats.done} de {stats.subactionCount} subações concluídas</p>
               </div>
-              <span className={`text-lg font-semibold ${
-                stats.completion >= 90 ? "text-emerald-400" :
-                stats.completion >= 70 ? "text-amber-400" :
-                "text-rose-400"
-              }`}>
-                {stats.completion}%
-              </span>
-            </div>
-          </div>
-        </section>
-
-        <section className="mt-6 grid gap-5 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
-          <TableGridPDCA
-            pdcas={pdcas}
-            selectedPdcaId={selectedPdcaId}
-            onSelectPdca={setSelectedPdcaId}
-            loading={loading}
-            localMode={localMode}
-            onSelectSubAction={(subaction) => {
-              setSelectedSubAction(subaction as any);
-            }}
-          />
-
-          <div className="space-y-5">
-            <section className="rounded-3xl border border-white/10 bg-white/[0.03] p-5 shadow-[0_28px_55px_-35px_rgba(15,23,42,0.9)]">
-              <h3 className="text-lg font-semibold text-slate-100">Leituras Executivas</h3>
-              <p className="mt-1 text-sm text-slate-400">Sintese dinamica com base nas subacoes do portifolio atual.</p>
-              <div className="mt-4 space-y-2 text-sm text-slate-200">
-                <div className="rounded-xl border border-slate-700/80 bg-slate-900/70 px-3 py-2">
-                  {stats.withEvidence} subacoes com evidencia registrada.
+              <div className="flex items-center gap-3">
+                <div className="h-3 w-48 rounded-full bg-slate-700 overflow-hidden">
+                  <div
+                    className={`h-full rounded-full transition-all duration-500 ${
+                      stats.completion >= 90 ? "bg-emerald-500" :
+                      stats.completion >= 70 ? "bg-amber-500" :
+                      "bg-rose-500"
+                    }`}
+                    style={{ width: `${stats.completion}%` }}
+                  />
                 </div>
-                <div className="rounded-xl border border-slate-700/80 bg-slate-900/70 px-3 py-2">
-                  {stats.inProgress} subacoes em execucao no ciclo atual.
-                </div>
-                <div className="rounded-xl border border-slate-700/80 bg-slate-900/70 px-3 py-2">
-                  {stats.pending} subacoes pendentes para avancar maturidade.
-                </div>
-                <div className="rounded-xl border border-slate-700/80 bg-slate-900/70 px-3 py-2">
-                  Eficacia global do portifolio: {stats.completion}%.
-                </div>
+                <span className={`text-lg font-semibold ${
+                  stats.completion >= 90 ? "text-emerald-400" :
+                  stats.completion >= 70 ? "text-amber-400" :
+                  "text-rose-400"
+                }`}>
+                  {stats.completion}%
+                </span>
               </div>
-            </section>
+            </div>
+          </section>
+        )}
 
-            <ImportLogPanel logs={logs} formatDate={formatDate} />
-          </div>
-        </section>
+        {activeView === "painel" && (
+          <section className="mt-6 grid gap-5 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+            <TableGridPDCA
+              pdcas={pdcas}
+              selectedPdcaId={selectedPdcaId}
+              onSelectPdca={setSelectedPdcaId}
+              loading={loading}
+              localMode={localMode}
+              onSelectSubAction={(subaction) => {
+                setSelectedSubAction(subaction as any);
+              }}
+            />
 
-        <EvidenceDrawer
-          isOpen={!!selectedSubAction}
-          onClose={() => setSelectedSubAction(null)}
-          subAction={selectedSubAction ? {
-            id: `${selectedSubAction.etapa}-${selectedSubAction.acao}`,
-            pdcaId: selectedPdcaId,
-            descricao: selectedSubAction.subacao,
-            responsavel: selectedSubAction.responsavel,
-            prazo: selectedSubAction.prazo,
-            status: selectedSubAction.status,
-            progresso: selectedSubAction.resultado ? parseInt(selectedSubAction.resultado.replace("%", "")) || 0 : 0
-          } : null}
-        />
+            <div className="space-y-5">
+              <section className="rounded-3xl border border-white/10 bg-white/[0.03] p-5 shadow-[0_28px_55px_-35px_rgba(15,23,42,0.9)]">
+                <h3 className="text-lg font-semibold text-slate-100">Leituras Executivas</h3>
+                <p className="mt-1 text-sm text-slate-400">Sintese dinamica com base nas subacoes do portifolio atual.</p>
+                <div className="mt-4 space-y-2 text-sm text-slate-200">
+                  <div className="rounded-xl border border-slate-700/80 bg-slate-900/70 px-3 py-2">
+                    {stats.withEvidence} subacoes com evidencia registrada.
+                  </div>
+                  <div className="rounded-xl border border-slate-700/80 bg-slate-900/70 px-3 py-2">
+                    {stats.inProgress} subacoes em execucao no ciclo atual.
+                  </div>
+                  <div className="rounded-xl border border-slate-700/80 bg-slate-900/70 px-3 py-2">
+                    {stats.pending} subacoes pendentes para avancar maturidade.
+                  </div>
+                  <div className="rounded-xl border border-slate-700/80 bg-slate-900/70 px-3 py-2">
+                    Eficacia global do portifolio: {stats.completion}%.
+                  </div>
+                </div>
+              </section>
+
+              <ImportLogPanel logs={logs} formatDate={formatDate} />
+            </div>
+          </section>
+        )}
+
+        {activeView === "painel" && (
+          <EvidenceDrawer
+            isOpen={!!selectedSubAction}
+            onClose={() => setSelectedSubAction(null)}
+            subAction={selectedSubAction ? {
+              id: `${selectedSubAction.etapa}-${selectedSubAction.acao}`,
+              pdcaId: selectedPdcaId,
+              descricao: selectedSubAction.subacao,
+              responsavel: selectedSubAction.responsavel,
+              prazo: selectedSubAction.prazo,
+              status: selectedSubAction.status,
+              progresso: selectedSubAction.resultado ? parseInt(selectedSubAction.resultado.replace("%", "")) || 0 : 0
+            } : null}
+          />
+        )}
+
+        {activeView === "portfolio" && (
+          <section className="mt-6 rounded-3xl border border-white/10 bg-white/[0.03] p-5">
+            <h3 className="text-lg font-semibold text-slate-100">Portfolio PDCA</h3>
+            <p className="mt-1 text-sm text-slate-400">Gerenciamento completo do portifolio de PDCAs.</p>
+          </section>
+        )}
+
+        {activeView === "importacao" && (
+          <section className="mt-6 rounded-3xl border border-white/10 bg-white/[0.03] p-5">
+            <h3 className="text-lg font-semibold text-slate-100">Importacao Excel</h3>
+            <p className="mt-1 text-sm text-slate-400">Carregar planilhas PDCAs para analise.</p>
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              className="mt-4 rounded-lg bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700"
+            >
+              Selecionar arquivo Excel
+            </button>
+          </section>
+        )}
+
+        {activeView === "persistencia" && (
+          <section className="mt-6 rounded-3xl border border-white/10 bg-white/[0.03] p-5">
+            <h3 className="text-lg font-semibold text-slate-100">Persistencia SGQ</h3>
+            <p className="mt-1 text-sm text-slate-400">
+              {localMode
+                ? "Modo local ativo (sem persistencia)"
+                : "Conectado ao Supabase via API /api/pdcas"}
+            </p>
+          </section>
+        )}
       </main>
     </div>
   );

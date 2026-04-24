@@ -1,4 +1,5 @@
 import { ChartNoAxesCombined, CircleGauge, Database, Layers, UploadCloud } from "lucide-react";
+import { useAppState, PdcaView } from "@/lib/app-state";
 
 type SidebarProps = {
   pdcaCount: number;
@@ -8,14 +9,16 @@ type SidebarProps = {
   localMode: boolean;
 };
 
-const navItems = [
-  { label: "Painel Executivo", icon: ChartNoAxesCombined },
-  { label: "Portfolio PDCA", icon: Layers },
-  { label: "Importacao Excel", icon: UploadCloud },
-  { label: "Persistencia SGQ", icon: Database },
+const navItems: { label: string; icon: typeof ChartNoAxesCombined; view: PdcaView }[] = [
+  { label: "Painel Executivo", icon: ChartNoAxesCombined, view: "painel" },
+  { label: "Portfolio PDCA", icon: Layers, view: "portfolio" },
+  { label: "Importacao Excel", icon: UploadCloud, view: "importacao" },
+  { label: "Persistencia SGQ", icon: Database, view: "persistencia" },
 ];
 
 export function Sidebar({ pdcaCount, subactionCount, doneCount, completion, localMode }: SidebarProps) {
+  const { activeView, setActiveView } = useAppState();
+
   return (
     <aside className="fixed inset-y-0 left-0 hidden w-72 border-r border-white/10 bg-slate-950/95 lg:block">
       <div className="flex h-full flex-col px-6 py-7">
@@ -26,15 +29,23 @@ export function Sidebar({ pdcaCount, subactionCount, doneCount, completion, loca
         </div>
 
         <nav className="mt-8 space-y-2">
-          {navItems.map((item) => (
-            <div
-              key={item.label}
-              className="flex items-center gap-3 rounded-xl border border-transparent bg-slate-900/30 px-3 py-2 text-sm text-slate-200"
-            >
-              <item.icon className="h-4 w-4 text-slate-400" />
-              <span>{item.label}</span>
-            </div>
-          ))}
+          {navItems.map((item) => {
+            const isActive = activeView === item.view;
+            return (
+              <button
+                key={item.label}
+                onClick={() => setActiveView(item.view)}
+                className={`flex w-full items-center gap-3 rounded-xl border border-transparent px-3 py-2 text-sm transition-colors ${
+                  isActive
+                    ? "bg-blue-600 text-white"
+                    : "bg-slate-900/30 text-slate-200 hover:bg-slate-800 hover:text-white"
+                }`}
+              >
+                <item.icon className={`h-4 w-4 ${isActive ? "text-white" : "text-slate-400"}`} />
+                <span>{item.label}</span>
+              </button>
+            );
+          })}
         </nav>
 
         <div className="mt-8 rounded-2xl border border-cyan-300/20 bg-gradient-to-br from-cyan-500/20 via-blue-500/10 to-indigo-500/25 p-4">
