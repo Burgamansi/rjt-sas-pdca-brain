@@ -148,16 +148,16 @@ export function TableGridPDCA({ pdcas, selectedPdcaId, onSelectPdca, loading, lo
     <section className="rounded-3xl border border-white/10 bg-white/[0.03] p-5 shadow-[0_28px_55px_-35px_rgba(15,23,42,0.9)]">
       <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h3 className="text-lg font-semibold text-slate-100">TableGrid PDCA</h3>
-          <p className="mt-1 text-sm text-slate-400">
-            ETAPA | ACAO | SUBACAO | RESPONSAVEL | RESULTADO | STATUS | PRAZO
+          <h3 className="text-xl font-bold text-white">PDCA Executivo</h3>
+          <p className="mt-2 text-sm text-slate-300 font-medium leading-relaxed">
+            Matriz de Ações - ETAPA | AÇÃO | SUBAÇÃO | RESPONSÁVEL | RESULTADO | STATUS | PRAZO
           </p>
         </div>
 
-        <label className="text-sm text-slate-300">
-          PDCA
+        <label className="text-sm font-medium text-slate-200">
+          Selecionar PDCA
           <select
-            className="mt-1 block min-w-48 rounded-xl border border-slate-700 bg-slate-900/80 px-3 py-2 text-sm text-slate-100 focus:border-cyan-300 focus:outline-none"
+            className="mt-2 block min-w-56 rounded-xl border border-slate-600 bg-slate-800 px-4 py-2.5 text-sm font-medium text-white focus:border-cyan-400 focus:outline-none"
             value={current?.id ?? ""}
             onChange={(event) => onSelectPdca(event.target.value)}
             disabled={!pdcas.length}
@@ -204,19 +204,19 @@ export function TableGridPDCA({ pdcas, selectedPdcaId, onSelectPdca, loading, lo
                 </div>
 
                 <div className="overflow-x-auto">
-                  <table className="min-w-[980px] w-full text-left text-sm">
-                    <thead className="bg-slate-900/80 text-slate-300">
+                  <table className="min-w-[980px] w-full text-left text-sm font-medium">
+                    <thead className="bg-slate-800 text-slate-200 border-b border-slate-700">
                       <tr>
-                        <th className="px-3 py-3 font-semibold">ETAPA</th>
-                        <th className="px-3 py-3 font-semibold">ACAO</th>
-                        <th className="px-3 py-3 font-semibold">SUBACAO</th>
-                        <th className="px-3 py-3 font-semibold">RESPONSAVEL</th>
-                        <th className="px-3 py-3 font-semibold">RESULTADO</th>
-                        <th className="px-3 py-3 font-semibold">STATUS</th>
-                        <th className="px-3 py-3 font-semibold">PRAZO</th>
+                        <th className="px-4 py-3 font-semibold text-slate-200">ETAPA</th>
+                        <th className="px-4 py-3 font-semibold text-slate-200">AÇÃO</th>
+                        <th className="px-4 py-3 font-semibold text-slate-200">SUBAÇÃO</th>
+                        <th className="px-4 py-3 font-semibold text-slate-200">RESPONSÁVEL</th>
+                        <th className="px-4 py-3 font-semibold text-slate-200">RESULTADO</th>
+                        <th className="px-4 py-3 font-semibold text-slate-200">STATUS</th>
+                        <th className="px-4 py-3 font-semibold text-slate-200">PRAZO</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-800/70">
+                    <tbody className="divide-y divide-slate-700 bg-slate-900/50">
                       {group.rows.map((row, index) => {
                         const kind = statusKind(row.status, row.prazo);
                         const status = statusStyle[kind];
@@ -224,7 +224,7 @@ export function TableGridPDCA({ pdcas, selectedPdcaId, onSelectPdca, loading, lo
                         const percent = resultPercent(row.resultado);
 
                         return (
-                          <tr key={rowKey(row, index)} className={`${phase.row} text-slate-200`}>
+                          <tr key={rowKey(row, index)} className={`${phase.row} text-slate-100`}>
                             <td className="px-3 py-2.5">
                               <div className="inline-flex items-center gap-2">
                                 <span className={`h-6 w-1 rounded-full ${phase.bar}`} />
@@ -234,34 +234,40 @@ export function TableGridPDCA({ pdcas, selectedPdcaId, onSelectPdca, loading, lo
                               </div>
                             </td>
                             <td className="px-3 py-2.5 text-slate-100">{row.acao || "--"}</td>
-                            <td className="px-3 py-2.5">
-                              <span className="font-semibold text-white">{row.subacao || "--"}</span>
-                            </td>
-                            <td className="px-3 py-2.5">{row.responsavel || "--"}</td>
-                            <td className="px-3 py-2.5">
+                            <td className="px-4 py-3 text-white font-semibold">{row.subacao || "--"}</td>
+                            <td className="px-4 py-3 text-white font-medium">{row.responsavel || "--"}</td>
+                            <td className="px-4 py-3">
                               <div className="flex flex-col gap-1">
                                 <div className="flex items-center gap-2">
-                                  <Activity className="h-3.5 w-3.5 text-cyan-300" />
-                                  <span>{row.resultado || "--"}</span>
+                                  <Activity className="h-4 w-4 text-cyan-400" />
+                                  <span className="text-white font-medium">{row.resultado || "--"}</span>
                                   {percent !== null ? (
-                                    <span className={`inline-flex items-center gap-1 rounded-full border border-${percent >= 90 ? 'emerald' : percent >= 70 ? 'amber' : 'rose'}-300/35 bg-${percent >= 90 ? 'emerald' : percent >= 70 ? 'amber' : 'rose'}-400/10 px-2 py-0.5 text-xs font-semibold text-${percent >= 90 ? 'emerald' : percent >= 70 ? 'amber' : 'rose'}-200`}>
+                                    <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-semibold ${
+                                      percent >= 90 ? 'border-emerald-400 bg-emerald-500/20 text-emerald-300' :
+                                      percent >= 70 ? 'border-amber-400 bg-amber-500/20 text-amber-300' :
+                                      'border-rose-400 bg-rose-500/20 text-rose-300'
+                                    }`}>
                                       <Percent className="h-3 w-3" />
                                       {percent}%
                                     </span>
                                   ) : null}
                                 </div>
                                 {percent !== null && (
-                                  <div className="h-1 w-full rounded-full bg-slate-700 overflow-hidden">
+                                  <div className="h-1.5 w-full rounded-full bg-slate-700 overflow-hidden">
                                     <div
-                                      className={`h-full rounded-full transition-all duration-300 ${progressBarColor(percent)}`}
+                                      className={`h-full rounded-full transition-all duration-300 ${
+                                        percent >= 90 ? 'bg-emerald-500' :
+                                        percent >= 70 ? 'bg-amber-500' :
+                                        'bg-rose-500'
+                                      }`}
                                       style={{ width: `${percent}%` }}
                                     />
                                   </div>
                                 )}
                               </div>
                             </td>
-                            <td className="px-3 py-2.5">
-                              <span className={`inline-flex rounded-full border px-2.5 py-0.5 text-xs font-semibold ${status.className}`}>
+                            <td className="px-4 py-3">
+                              <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold ${status.className}`}>
                                 {status.label}
                               </span>
                             </td>
