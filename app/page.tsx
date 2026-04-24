@@ -11,6 +11,7 @@ import { EvidenceDrawer } from "@/components/pdca/evidence-drawer";
 import { Sidebar } from "@/components/pdca/sidebar";
 import { TopBar } from "@/components/pdca/top-bar";
 import { mapApiPdcas } from "@/lib/pdca-front-mapper";
+import { useAppState } from "@/lib/app-state";
 
 type PdcaComputedMetrics = {
   totalSubactions: number;
@@ -109,17 +110,8 @@ function mergePdcaRecords(existing: PdcaRecord[], incoming: PdcaRecord[]): PdcaR
 }
 
 export default function Page() {
+  const { selectedPdcaId, setSelectedPdcaId, selectedSubAction, setSelectedSubAction } = useAppState();
   const [pdcas, setPdcas] = useState<PdcaRecord[]>([]);
-  const [selectedPdcaId, setSelectedPdcaId] = useState<string>("");
-  const [selectedSubAction, setSelectedSubAction] = useState<{
-    id: string;
-    pdcaId: string;
-    descricao: string;
-    responsavel: string;
-    prazo: string;
-    status: string;
-    progresso: number;
-  } | null>(null);
   const [loading, setLoading] = useState(true);
   const [importing, setImporting] = useState(false);
   const [localMode, setLocalMode] = useState(false);
@@ -160,7 +152,7 @@ export default function Page() {
   function useLocalFallback(parsed: PdcaRecord[], failureMessage: string) {
     setLocalMode(true);
     setPdcas((prev) => mergePdcaRecords(prev, parsed));
-    setSelectedPdcaId((prev) => prev || parsed[0]?.id || "");
+    setSelectedPdcaId(parsed[0]?.id || "");
     setMessage(failureMessage);
   }
 
@@ -403,15 +395,7 @@ export default function Page() {
             loading={loading}
             localMode={localMode}
             onSelectSubAction={(subaction) => {
-              setSelectedSubAction({
-                id: `${subaction.etapa}-${subaction.acao}`,
-                pdcaId: selectedPdcaId,
-                descricao: subaction.subacao,
-                responsavel: subaction.responsavel,
-                prazo: subaction.prazo,
-                status: subaction.status,
-                progresso: subaction.resultado ? parseInt(subaction.resultado.replace("%", "")) || 0 : 0,
-              });
+              setSelectedSubAction(subaction as any);
             }}
           />
 
@@ -442,7 +426,15 @@ export default function Page() {
         <EvidenceDrawer
           isOpen={!!selectedSubAction}
           onClose={() => setSelectedSubAction(null)}
-          subAction={selectedSubAction}
+          subAction={selectedSubAction ? {
+            id: `${selectedSubAction.etapa}-${selectedSubAction.acao}`,
+            pdcaId: selectedPdcaId,
+            descricao: selectedSubAction.subacao,
+            responsavel: selectedSubAction.responsavel,
+            prazo: selectedSubAction.prazo,
+            status: selectedSubAction.status,
+            progresso: selectedSubAction.resultado ? parseInt(selectedSubAction.resultado.replace("%", "")) || 0 : 0
+          } : null}
         />
       </main>
     </div>
