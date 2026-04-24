@@ -12,6 +12,7 @@ import { Sidebar } from "@/components/pdca/sidebar";
 import { TopBar } from "@/components/pdca/top-bar";
 import { mapApiPdcas } from "@/lib/pdca-front-mapper";
 import { useAppState } from "@/lib/app-state";
+import { PortfolioView } from "@/components/pdca/portfolio-view";
 
 type PdcaComputedMetrics = {
   totalSubactions: number;
@@ -446,10 +447,15 @@ export default function Page() {
         )}
 
         {activeView === "portfolio" && (
-          <section className="mt-6 rounded-3xl border border-white/10 bg-white/[0.03] p-5">
-            <h3 className="text-lg font-semibold text-slate-100">Portfolio PDCA</h3>
-            <p className="mt-1 text-sm text-slate-400">Gerenciamento completo do portifolio de PDCAs.</p>
-          </section>
+          <div className="rounded-2xl bg-slate-50 p-6">
+            <PortfolioView
+              pdcas={pdcas}
+              selectedPdcaId={selectedPdcaId}
+              onSelectPdca={setSelectedPdcaId}
+              onRefresh={() => void loadPdcas()}
+              onImport={() => fileInputRef.current?.click()}
+            />
+          </div>
         )}
 
         {activeView === "importacao" && (
