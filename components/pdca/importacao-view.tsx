@@ -82,6 +82,15 @@ function safeGetField(row: unknown[], idx: number): string {
   return safeString(val);
 }
 
+function normalize(value: unknown): string {
+  if (value === null || value === undefined) return "";
+  try {
+    return String(value).trim().toUpperCase();
+  } catch {
+    return "";
+  }
+}
+
 function parseExcelToRecords(buffer: ArrayBuffer): { rows: ParsedRow[]; errors: string[] } {
   const errors: string[] = [];
   try {
@@ -95,7 +104,7 @@ function parseExcelToRecords(buffer: ArrayBuffer): { rows: ParsedRow[]; errors: 
       return { rows: [], errors };
     }
 
-    const headerRow = data[0].map((h) => safeUpper(h));
+    const headerRow = data[0].map((h) => normalize(h));
     const findColumn = (patterns: string[]): number => {
       for (const p of patterns) {
         const idx = headerRow.findIndex((h) => h.includes(p));
@@ -112,26 +121,54 @@ function parseExcelToRecords(buffer: ArrayBuffer): { rows: ParsedRow[]; errors: 
     const prazoIdx = findColumn(["PRAZO", "DEADLINE", "DATA", "DUE"]);
     const statusIdx = findColumn(["STATUS", "SITUACAO", "SITUAÇÃO"]);
 
+    // Validar colunas obrigatórias
+    if (pdcaIdx === -1) errors.push("Coluna PDCA não encontrada");
+    if (faseIdx === -1) errors.push("Coluna FASE não encontrada ou vazia");
+    if (acaoIdx === -1) errors.push("Coluna ACAO não encontrada");
+    if (subacaoIdx === -1) errors.push("Coluna SUBACAO não encontrada");
+
+    if (errors.length > 0) {
+      return { rows: [], errors };
+    }
+
     const rows: ParsedRow[] = [];
     for (let i = 1; i < data.length; i++) {
       const row = data[i];
       if (!row || !Array.isArray(row)) continue;
 
-      const faseRaw = faseIdx !== -1 ? safeUpper(row[faseIdx]) : "";
+      const faseRaw = faseIdx !== -1 ? normalize(row[faseIdx]) : "";
       let fase: PdcaPhase = "plan";
       if (faseRaw.includes("DO") || faseRaw.includes("EXE")) fase = "do";
       else if (faseRaw.includes("CHECK") || faseRaw.includes("VER")) fase = "check";
       else if (faseRaw.includes("ACT") || faseRaw.includes("COR")) fase = "act";
       else if (faseRaw.includes("PLAN") || faseRaw.includes("PLA")) fase = "plan";
 
+      const pdca = normalize(row[pdcaIdx]);
+      const acao = normalize(row[acaoIdx]);
+      const subacao = normalize(row[subacaoIdx]);
+
+      // Validar campos obrigatórios por linha
+      if (!pdca) {
+        errors.push(`Linha ${i + 1}: Coluna PDCA vazia`);
+        continue;
+      }
+      if (!acao) {
+        errors.push(`Linha ${i + 1}: Coluna ACAO vazia`);
+        continue;
+      }
+      if (!subacao) {
+        errors.push(`Linha ${i + 1}: Coluna SUBACAO vazia`);
+        continue;
+      }
+
       rows.push({
-        pdca: pdcaIdx !== -1 ? safeGetField(row, pdcaIdx) : "",
+        pdca: String(row[pdcaIdx] || "").trim(),
         fase,
-        acao: acaoIdx !== -1 ? safeGetField(row, acaoIdx) : "",
-        subacao: subacaoIdx !== -1 ? safeGetField(row, subacaoIdx) : "",
-        responsavel: respIdx !== -1 ? safeGetField(row, respIdx) : "",
-        prazo: prazoIdx !== -1 ? safeGetField(row, prazoIdx) : "",
-        status: statusIdx !== -1 ? (safeGetField(row, statusIdx) || "Pendente") : "Pendente"
+        acao: String(row[acaoIdx] || "").trim(),
+        subacao: String(row[subacaoIdx] || "").trim(),
+        responsavel: respIdx !== -1 ? String(row[respIdx] || "").trim() : "",
+        prazo: prazoIdx !== -1 ? String(row[prazoIdx] || "").trim() : "",
+        status: statusIdx !== -1 ? (String(row[statusIdx] || "").trim() || "Pendente") : "Pendente"
       });
     }
 
