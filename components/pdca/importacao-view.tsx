@@ -406,16 +406,18 @@ export function ImportView({ onRefresh, onImport, onDataImported }: ImportViewPr
     if (pdcas.length === 0) return;
     setImporting(true);
     setCurrentStep("sincronizacao");
+    // Update local state immediately so comoFazer appears in the grid even if server sync fails
+    onDataImported(pdcas);
     try {
       const res = await fetch("/api/pdcas", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ pdcas }),
       });
-      if (res.ok) { setSuccess(true); onDataImported(pdcas); onRefresh(); }
-      else setErrors(["Erro ao sincronizar com o servidor"]);
+      if (res.ok) { setSuccess(true); onRefresh(); }
+      else setErrors(["Dados importados localmente. Sincronização com servidor falhou."]);
     } catch (e) {
-      setErrors([`Erro: ${e}`]);
+      setErrors([`Dados importados localmente. Erro de rede: ${e}`]);
     } finally {
       setImporting(false);
     }
