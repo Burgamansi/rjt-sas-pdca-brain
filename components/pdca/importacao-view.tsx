@@ -36,6 +36,13 @@ type ParsedRow = {
   status: string;
 };
 
+type FileResult = {
+  file: File;
+  rows: ParsedRow[];
+  errors: string[];
+  status: "pending" | "parsing" | "ok" | "error";
+};
+
 const faseLabels: Record<PdcaPhase, string> = {
   plan: "PLAN",
   do: "DO",
@@ -253,6 +260,7 @@ function convertToPdcaRecords(rows: ParsedRow[]): PdcaRecord[] {
 export function ImportView({ onRefresh, onImport, onDataImported }: ImportViewProps) {
   const [currentStep, setCurrentStep] = useState<Step>("upload");
   const [file, setFile] = useState<File | null>(null);
+  const [fileResults, setFileResults] = useState<FileResult[]>([]);
   const [parsedRows, setParsedRows] = useState<ParsedRow[]>([]);
   const [errors, setErrors] = useState<string[]>([]);
   const [warnings, setWarnings] = useState<string[]>([]);
@@ -260,44 +268,64 @@ export function ImportView({ onRefresh, onImport, onDataImported }: ImportViewPr
   const [success, setSuccess] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleFileSelect = useCallback(async (selectedFile: File) => {
-    setFile(selectedFile);
+  const handleMultipleFiles = useCallback(async (selectedFiles: File[]) => {
+    setFile(selectedFiles[0] ?? null);
     setErrors([]);
     setWarnings([]);
     setSuccess(false);
     setCurrentStep("validacao");
 
-    try {
-      const buffer = await selectedFile.arrayBuffer();
-      const { rows, errors: parseErrors } = parseExcelToRecords(buffer);
-      
-      if (parseErrors.length > 0) {
-        setErrors(parseErrors);
-        return;
-      }
+    const initial: FileResult[] = selectedFiles.map(f => ({
+      file: f,
+      rows: [],
+      errors: [],
+      status: "parsing"
+    }));
+    setFileResults(initial);
 
-      setParsedRows(rows);
-      
-      const duplicateCount = new Set(rows.map(r => `${r.pdca}-${r.subacao}`)).size;
-      if (duplicateCount < rows.length) {
-        setWarnings([`${rows.length - duplicateCount} duplicados detectados`]);
+    const updated = [...initial];
+    for (let i = 0; i < selectedFiles.length; i++) {
+      try {
+        const buffer = await selectedFiles[i].arrayBuffer();
+        const { rows, errors: parseErrors } = parseExcelToRecords(buffer);
+        updated[i] = {
+          ...updated[i],
+          rows,
+          errors: parseErrors,
+          status: parseErrors.length > 0 ? "error" : "ok"
+        };
+      } catch (e) {
+        updated[i] = {
+          ...updated[i],
+          errors: [`Erro ao ler: ${e}`],
+          status: "error"
+        };
       }
+      setFileResults([...updated]);
+    }
 
+    const allRows = updated.filter(r => r.status === "ok").flatMap(r => r.rows);
+    if (allRows.length > 0) {
+      setParsedRows(allRows);
+      const duplicateCount = new Set(allRows.map(r => `${r.pdca}-${r.subacao}`)).size;
+      if (duplicateCount < allRows.length) {
+        setWarnings([`${allRows.length - duplicateCount} duplicados detectados`]);
+      }
       setCurrentStep("previa");
-    } catch (e) {
-      setErrors([`Erro ao ler arquivo: ${e}`]);
     }
   }, []);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
-    const droppedFile = e.dataTransfer.files[0];
-    if (droppedFile && (droppedFile.name.endsWith(".xlsx") || droppedFile.name.endsWith(".xls"))) {
-      handleFileSelect(droppedFile);
+    const files = Array.from(e.dataTransfer.files).filter(
+      f => f.name.endsWith(".xlsx") || f.name.endsWith(".xls")
+    );
+    if (files.length) {
+      handleMultipleFiles(files);
     } else {
       setErrors(["Apenas arquivos .xlsx ou .xls são aceitos"]);
     }
-  }, [handleFileSelect]);
+  }, [handleMultipleFiles]);
 
   const handleImport = useCallback(async () => {
     if (parsedRows.length === 0) return;
@@ -329,6 +357,7 @@ export function ImportView({ onRefresh, onImport, onDataImported }: ImportViewPr
 
   const reset = () => {
     setFile(null);
+    setFileResults([]);
     setParsedRows([]);
     setErrors([]);
     setWarnings([]);
@@ -433,45 +462,78 @@ export function ImportView({ onRefresh, onImport, onDataImported }: ImportViewPr
                 <div className="rounded-full p-4 mb-4" style={{ backgroundColor: "rgba(0, 212, 255, 0.1)" }}>
                   <FileSpreadsheet className="h-12 w-12" style={{ color: COLORS.neon }} />
                 </div>
-                <p className="text-lg font-medium" style={{ color: COLORS.white }}>Arraste o arquivo Excel aqui</p>
-                <p className="text-sm mt-1" style={{ color: COLORS.gray }}>ou clique para selecionar</p>
+                <p className="text-lg font-medium" style={{ color: COLORS.white }}>Arraste os arquivos Excel aqui</p>
+                <p className="text-sm mt-1" style={{ color: COLORS.gray }}>ou clique para selecionar (múltiplos permitidos)</p>
                 <input
                   ref={fileInputRef}
                   type="file"
                   accept=".xlsx,.xls"
+                  multiple
                   hidden
-                  onChange={(e) => e.target.files?.[0] && handleFileSelect(e.target.files[0])}
+                  onChange={(e) => {
+                    const files = Array.from(e.target.files ?? []);
+                    if (files.length) handleMultipleFiles(files);
+                    e.target.value = "";
+                  }}
                 />
                 <button
                   onClick={() => fileInputRef.current?.click()}
                   className="mt-6 rounded-lg px-6 py-2 text-sm font-medium text-white transition-all hover:scale-105"
-                  style={{ 
+                  style={{
                     background: `linear-gradient(135deg, ${COLORS.neon}, ${COLORS.neonSecondary})`,
                     boxShadow: `0 0 20px ${COLORS.neonGlow}`
                   }}
                 >
-                  Selecionar arquivo Excel
+                  Selecionar arquivos Excel
                 </button>
-                <p className="mt-4 text-xs" style={{ color: COLORS.gray }}>Aceitos: .xlsx, .xls</p>
+                <p className="mt-4 text-xs" style={{ color: COLORS.gray }}>Aceitos: .xlsx, .xls — selecione 1 ou mais arquivos</p>
               </div>
             </div>
           )}
 
-          {/* Validation Errors */}
-          {currentStep === "validacao" && errors.length > 0 && (
-            <div className="rounded-2xl border border-red-500/50 bg-red-950/20 p-6" style={{ boxShadow: `0 0 20px rgba(239, 68, 68, 0.2)` }}>
-              <div className="flex items-center gap-3">
-                <XCircle className="h-6 w-6" style={{ color: COLORS.error }} />
-                <h3 className="text-lg font-semibold" style={{ color: COLORS.white }}>Erros na Validação</h3>
+          {/* File Processing Status */}
+          {currentStep === "validacao" && fileResults.length > 0 && (
+            <div className="rounded-2xl border border-cyan-500/30 bg-cyan-950/10 p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold" style={{ color: COLORS.white }}>
+                  Processando {fileResults.length} arquivo{fileResults.length > 1 ? "s" : ""}...
+                </h3>
+                <button onClick={reset} className="text-sm hover:underline" style={{ color: COLORS.neon }}>
+                  Cancelar
+                </button>
               </div>
-              <div className="mt-4 space-y-2">
-                {errors.map((err, i) => (
-                  <p key={i} className="text-sm" style={{ color: COLORS.error }}>{err}</p>
+              <div className="space-y-3">
+                {fileResults.map((fr, i) => (
+                  <div key={i} className="flex items-start gap-3 rounded-xl border border-cyan-500/20 bg-cyan-950/20 p-3">
+                    <div className="mt-0.5 shrink-0">
+                      {fr.status === "parsing" && (
+                        <RefreshCw className="h-5 w-5 animate-spin" style={{ color: COLORS.neon }} />
+                      )}
+                      {fr.status === "ok" && (
+                        <CheckCircle className="h-5 w-5" style={{ color: COLORS.success }} />
+                      )}
+                      {fr.status === "error" && (
+                        <XCircle className="h-5 w-5" style={{ color: COLORS.error }} />
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate" style={{ color: COLORS.white }}>{fr.file.name}</p>
+                      {fr.status === "parsing" && (
+                        <p className="text-xs mt-1" style={{ color: COLORS.gray }}>Lendo arquivo...</p>
+                      )}
+                      {fr.status === "ok" && (
+                        <p className="text-xs mt-1" style={{ color: COLORS.success }}>{fr.rows.length} registros encontrados</p>
+                      )}
+                      {fr.status === "error" && fr.errors.map((err, j) => (
+                        <p key={j} className="text-xs mt-1" style={{ color: COLORS.error }}>{err}</p>
+                      ))}
+                    </div>
+                    <span className="text-xs shrink-0" style={{ color: COLORS.gray }}>
+                      {(fr.file.size / 1024).toFixed(0)} KB
+                    </span>
+                  </div>
                 ))}
               </div>
-              <button onClick={reset} className="mt-4 text-sm hover:underline" style={{ color: COLORS.neon }}>
-                Tentar novamente
-              </button>
             </div>
           )}
 
@@ -575,19 +637,25 @@ export function ImportView({ onRefresh, onImport, onDataImported }: ImportViewPr
         {/* Sidebar */}
         <div className="space-y-4">
           {/* File Info Card */}
-          {file && (
+          {fileResults.length > 0 && (
             <div className="rounded-xl border border-cyan-500/20 bg-cyan-950/10 p-5">
-              <h3 className="text-lg font-semibold" style={{ color: COLORS.white }}>Informações do Arquivo</h3>
+              <h3 className="text-lg font-semibold" style={{ color: COLORS.white }}>Arquivos</h3>
               <div className="mt-4 space-y-4">
-                <div>
-                  <p className="text-xs font-medium uppercase" style={{ color: COLORS.neon }}>Nome</p>
-                  <p className="mt-1 text-sm truncate" style={{ color: COLORS.white }}>{file.name}</p>
-                </div>
-                <div>
-                  <p className="text-xs font-medium uppercase" style={{ color: COLORS.neon }}>Tamanho</p>
-                  <p className="mt-1 text-sm" style={{ color: COLORS.white }}>{(file.size / 1024).toFixed(1)} KB</p>
-                </div>
                 <div className="flex gap-4">
+                  <div>
+                    <p className="text-xs font-medium uppercase" style={{ color: COLORS.neon }}>Total</p>
+                    <p className="mt-1 text-lg font-bold" style={{ color: COLORS.neon }}>{fileResults.length}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-medium uppercase" style={{ color: COLORS.success }}>OK</p>
+                    <p className="mt-1 text-lg font-bold" style={{ color: COLORS.success }}>{fileResults.filter(r => r.status === "ok").length}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-medium uppercase" style={{ color: COLORS.error }}>Erro</p>
+                    <p className="mt-1 text-lg font-bold" style={{ color: COLORS.error }}>{fileResults.filter(r => r.status === "error").length}</p>
+                  </div>
+                </div>
+                <div className="flex gap-4 border-t border-cyan-500/20 pt-4">
                   <div>
                     <p className="text-xs font-medium uppercase" style={{ color: COLORS.neon }}>PDCAs</p>
                     <p className="mt-1 text-lg font-bold" style={{ color: COLORS.neon }}>{new Set(parsedRows.map(r => r.pdca)).size}</p>
