@@ -198,6 +198,92 @@ function buildRecord(rows: RawRow[], filename: string): PdcaRecord {
   };
 }
 
+// ── Parser for TABELA_MESTRE_PDCA format (A01 01.01 / AÇÃO 01 / PDCA 07) ─────
+
+const MONTHS_PT = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho",
+  "Julho","Agosto","Setembro","Outubro","Novembro","Dezembro",
+  "Mensal","Semanal","Trimestral","Semestral","Anual","Bimestral"];
+
+const RESP_KEYWORDS = ["Diretoria","SGQ","Comercial","PCP","Qualidade","RH",
+  "TI","Financeiro","Engenharia","Produção","Logística","Operações"];
+
+function parseTabelaMestreFormat(text: string, filename: string): RawRow[] {
+  const norm = text.replace(/\s+/g, " ").trim();
+
+  const pdcaNumMatch = norm.match(/PDCA\s*(\d+)\s*[–\-]/i)
+    ?? filename.match(/PDCA[\s_-]*0*(\d+)/i);
+  const pdcaNum = pdcaNumMatch ? pdcaNumMatch[1].padStart(2, "0") : "01";
+  const codPdca = `PDCA${pdcaNum}`;
+
+  // Collect AÇÃO titles
+  const acaoTitles = new Map<string, string>();
+  const acaoRe = /AÇÃO\s*(\d{1,2})\s*[–\-]\s*([^\n]{5,80})/g;
+  let am: RegExpExecArray | null;
+  while ((am = acaoRe.exec(norm)) !== null) {
+    acaoTitles.set(am[1].padStart(2, "0"), am[2].trim());
+  }
+
+  // Split on sub-action markers: A01 01.01
+  const subRe = /A(\d{2})\s+(\d{2}\.\d{2})([\s\S]*?)(?=A\d{2}\s+\d{2}\.\d{2}|AÇÃO\s*\d|$)/g;
+  const rows: RawRow[] = [];
+  let sub: RegExpExecArray | null;
+
+  while ((sub = subRe.exec(norm)) !== null) {
+    const actionNum = sub[1];
+    const subNum    = sub[2];
+    const block     = sub[3].replace(/\s+/g, " ").trim();
+
+    const firstStep = block.search(/\b1\.\s+/);
+    const preStep   = firstStep >= 0 ? block.slice(0, firstStep).trim() : block;
+    const fromStep  = firstStep >= 0 ? block.slice(firstStep) : "";
+
+    // Numbered como-fazer steps
+    const items: string[] = [];
+    const stepRe = /\b\d+\.\s+(.+?)(?=\s+\d+\.\s+|$)/g;
+    let nm: RegExpExecArray | null;
+    while ((nm = stepRe.exec(fromStep)) !== null) items.push(nm[1].trim().replace(/\s+/g, " "));
+    const comoFazer = items.map((it, i) => `${i + 1}. ${it}`).join("\n");
+
+    // Responsável
+    const respPat = new RegExp(
+      `(${RESP_KEYWORDS.join("|")})(?:\\s*[+/]\\s*(${RESP_KEYWORDS.join("|")}))?`, "i");
+    const respM = preStep.match(respPat) ?? block.match(respPat);
+    const responsavel = respM ? respM[0].replace(/\s+/g, " ").trim() : "";
+
+    // Prazo
+    const prazoM = block.match(new RegExp(`\\b(${MONTHS_PT.join("|")})\\b`, "i"));
+    const prazo  = prazoM?.[1] ?? "";
+
+    // Evidência: word/phrase after prazo
+    const evidM = block.match(new RegExp(
+      `(?:${MONTHS_PT.join("|")})\\s+([A-ZÁÀÂÃÉÈÍÓÔÕÚÇa-záàâãéèíóôõúç]{3,40})`, "i"));
+    const evidencia = evidM?.[1] ?? "";
+
+    let descricao = preStep
+      .replace(responsavel, "").replace(prazo, "")
+      .replace(/\s+/g, " ").trim().slice(0, 140).trim();
+    if (!descricao) descricao = `Subação ${actionNum}.${subNum}`;
+
+    rows.push({
+      id:         `${codPdca}-A${actionNum}-${subNum}`,
+      codPdca,
+      phase:      "do" as PdcaPhase,
+      acao:       acaoTitles.get(actionNum) ?? `Ação ${actionNum}`,
+      subacao:    descricao,
+      responsavel,
+      comoFazer,
+      evidencias: evidencia,
+      indicador:  "",
+      meta:       prazo,
+      resultado:  "",
+      status:     "Pendente",
+      dataFim:    prazo,
+    });
+  }
+
+  return rows;
+}
+
 // ── Diagnostic preview (when no parseable rows found) ────────────────────────
 
 function buildPreview(text: string, filename: string) {
@@ -232,11 +318,14 @@ export async function POST(req: NextRequest) {
     }
 
     const text = await extractPdfText(buf);
-    const rows = parseRows(text);
+
+    // Try pipe-format parser first, then TABELA_MESTRE format
+    let rows = parseRows(text);
+    if (rows.length === 0) rows = parseTabelaMestreFormat(text, file.name);
 
     if (rows.length > 0) {
       const record = buildRecord(rows, file.name);
-      return NextResponse.json({ ok: true, pdca: record, rowCount: rows.length, text: text.slice(0, 500) });
+      return NextResponse.json({ ok: true, pdca: record, rowCount: rows.length });
     }
 
     // Could not extract structured rows — return diagnostic info
@@ -247,7 +336,7 @@ export async function POST(req: NextRequest) {
       preview,
       rowCount: 0,
       message: text.length > 100
-        ? "Texto extraído do PDF, mas nenhuma linha TABELA MESTRE encontrada. O PDF pode estar em formato diferente."
+        ? "Texto extraído do PDF, mas formato não reconhecido. Verifique se o PDF vem de um arquivo Word/Excel."
         : "Não foi possível extrair texto do PDF. O arquivo pode ser uma imagem escaneada (sem camada de texto).",
       suggestion: "Converta o PDF para DOCX e importe pela opção 'Importar Excel / DOCX'.",
     }, { status: 422 });
