@@ -117,10 +117,10 @@ export function PortfolioView({ pdcas, selectedPdcaId, onSelectPdca, onRefresh, 
           <p className="mt-1 text-sm text-slate-400">Visão consolidada do portfólio de ciclos PDCA.</p>
         </div>
         <div className="flex gap-2">
-          <button onClick={onRefresh} className="inline-flex items-center gap-2 rounded-xl border border-[#1B9BEE]/20 bg-slate-800/60 px-4 py-2 text-sm font-medium text-slate-300 hover:text-white transition-colors">
+          <button onClick={onRefresh} className="inline-flex items-center gap-2 rounded-xl border border-[#1E7FD5]/20 bg-slate-800/60 px-4 py-2 text-sm font-medium text-slate-300 hover:text-white transition-colors">
             <RefreshCw className="h-4 w-4" /> Atualizar
           </button>
-          <button onClick={onImport} className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#1B9BEE] to-[#0066B3] px-4 py-2 text-sm font-semibold text-white shadow-[0_0_16px_rgba(27,155,238,0.3)] hover:from-[#C3E6FF] hover:to-[#1B9BEE] transition-all">
+          <button onClick={onImport} className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#1E7FD5] to-[#0066B3] px-4 py-2 text-sm font-semibold text-white shadow-[0_0_16px_rgba(30,127,213,0.3)] hover:from-[#82C4F8] hover:to-[#1E7FD5] transition-all">
             <Upload className="h-4 w-4" /> Importar Excel
           </button>
         </div>
@@ -131,7 +131,7 @@ export function PortfolioView({ pdcas, selectedPdcaId, onSelectPdca, onRefresh, 
         {KPI_ITEMS.map(({ label, value, icon: Icon, color, bg }) => (
           <div key={label} className={`rounded-2xl border ${bg} p-4`}>
             <div className="flex items-center gap-2">
-              <div className={`rounded-lg bg-[#001D30]/80 p-1.5`}>
+              <div className={`rounded-lg bg-[#08192E]/80 p-1.5`}>
                 <Icon className={`h-4 w-4 ${color}`} />
               </div>
               <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">{label}</span>
@@ -142,7 +142,7 @@ export function PortfolioView({ pdcas, selectedPdcaId, onSelectPdca, onRefresh, 
       </div>
 
       {/* Filtros */}
-      <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-[#1B9BEE]/20 bg-[#001D30]/70 p-4">
+      <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-[#1E7FD5]/20 bg-[#08192E]/70 p-4">
         <div className="relative min-w-[200px] flex-1">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500 pointer-events-none" />
           <input
@@ -150,13 +150,13 @@ export function PortfolioView({ pdcas, selectedPdcaId, onSelectPdca, onRefresh, 
             placeholder="Buscar PDCA..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full rounded-xl border border-[#1B9BEE]/20 bg-slate-800/60 py-2 pl-9 pr-3 text-sm text-white placeholder:text-slate-500 focus:border-cyan-500/60 focus:outline-none"
+            className="w-full rounded-xl border border-[#1E7FD5]/20 bg-slate-800/60 py-2 pl-9 pr-3 text-sm text-white placeholder:text-slate-500 focus:border-cyan-500/60 focus:outline-none"
           />
         </div>
         <select
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value)}
-          className="rounded-xl border border-[#1B9BEE]/20 bg-slate-800/60 px-3 py-2 text-sm text-slate-300 focus:border-cyan-500/60 focus:outline-none"
+          className="rounded-xl border border-[#1E7FD5]/20 bg-slate-800/60 px-3 py-2 text-sm text-slate-300 focus:border-cyan-500/60 focus:outline-none"
         >
           <option value="all">Todos os Status</option>
           <option value="concluido">Concluído</option>
@@ -167,7 +167,7 @@ export function PortfolioView({ pdcas, selectedPdcaId, onSelectPdca, onRefresh, 
         <select
           value={phaseFilter}
           onChange={(e) => setPhaseFilter(e.target.value as PdcaPhase | "all")}
-          className="rounded-xl border border-[#1B9BEE]/20 bg-slate-800/60 px-3 py-2 text-sm text-slate-300 focus:border-cyan-500/60 focus:outline-none"
+          className="rounded-xl border border-[#1E7FD5]/20 bg-slate-800/60 px-3 py-2 text-sm text-slate-300 focus:border-cyan-500/60 focus:outline-none"
         >
           <option value="all">Todas as Fases</option>
           <option value="plan">PLAN</option>
@@ -178,7 +178,7 @@ export function PortfolioView({ pdcas, selectedPdcaId, onSelectPdca, onRefresh, 
         {(search || statusFilter !== "all" || phaseFilter !== "all") && (
           <button
             onClick={() => { setSearch(""); setStatusFilter("all"); setPhaseFilter("all"); }}
-            className="inline-flex items-center gap-1 rounded-xl border border-[#1B9BEE]/20 px-3 py-2 text-sm text-slate-400 hover:text-white transition-colors"
+            className="inline-flex items-center gap-1 rounded-xl border border-[#1E7FD5]/20 px-3 py-2 text-sm text-slate-400 hover:text-white transition-colors"
           >
             <X className="h-4 w-4" /> Limpar
           </button>
@@ -188,11 +188,11 @@ export function PortfolioView({ pdcas, selectedPdcaId, onSelectPdca, onRefresh, 
       {/* Conteúdo principal */}
       <div className="grid gap-5 lg:grid-cols-[1fr_300px]">
         {/* Tabela */}
-        <div className="overflow-hidden rounded-2xl border border-[#1B9BEE]/20 bg-[#001D30]/70">
+        <div className="overflow-hidden rounded-2xl border border-[#1E7FD5]/20 bg-[#08192E]/70">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-[#1B9BEE]/20 bg-slate-800/60">
+                <tr className="border-b border-[#1E7FD5]/20 bg-slate-800/60">
                   <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-400">Código</th>
                   <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-400">PDCA</th>
                   <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-400">Fase</th>
@@ -222,7 +222,7 @@ export function PortfolioView({ pdcas, selectedPdcaId, onSelectPdca, onRefresh, 
                         onClick={() => onSelectPdca(pdca.id)}
                         className={`cursor-pointer transition-colors hover:bg-slate-800/40 ${isSelected ? "bg-cyan-500/8 ring-1 ring-inset ring-cyan-500/20" : ""}`}
                       >
-                        <td className="px-4 py-3 font-mono text-sm font-semibold text-[#1B9BEE]">{pdca.id}</td>
+                        <td className="px-4 py-3 font-mono text-sm font-semibold text-[#1E7FD5]">{pdca.id}</td>
                         <td className="px-4 py-3 text-white">{(pdca.titulo ?? "-").substring(0, 32)}</td>
                         <td className="px-4 py-3">
                           <span className={`inline-flex rounded-full border px-2 py-0.5 text-xs font-semibold ${ps.chip}`}>
@@ -263,13 +263,13 @@ export function PortfolioView({ pdcas, selectedPdcaId, onSelectPdca, onRefresh, 
         {/* Painel lateral */}
         <div className="space-y-4">
           {/* Detalhes */}
-          <div className="rounded-2xl border border-[#1B9BEE]/20 bg-[#001D30]/70 p-5">
+          <div className="rounded-2xl border border-[#1E7FD5]/20 bg-[#08192E]/70 p-5">
             <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-400">Detalhes do PDCA</h3>
             {selectedPdca ? (
               <div className="mt-4 space-y-4">
                 <div>
                   <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-600">Código</p>
-                  <p className="mt-1 font-mono text-lg font-bold text-[#1B9BEE]">{selectedPdca.id}</p>
+                  <p className="mt-1 font-mono text-lg font-bold text-[#1E7FD5]">{selectedPdca.id}</p>
                 </div>
                 <div>
                   <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-600">Título</p>
@@ -294,7 +294,7 @@ export function PortfolioView({ pdcas, selectedPdcaId, onSelectPdca, onRefresh, 
                   <div className="mt-2 flex items-center gap-3">
                     <div className="h-2 flex-1 overflow-hidden rounded-full bg-slate-700">
                       <div
-                        className="h-full rounded-full bg-gradient-to-r from-[#1B9BEE] to-[#0066B3]"
+                        className="h-full rounded-full bg-gradient-to-r from-[#1E7FD5] to-[#0066B3]"
                         style={{ width: `${getPdcaProgress(selectedPdca)}%` }}
                       />
                     </div>
@@ -318,7 +318,7 @@ export function PortfolioView({ pdcas, selectedPdcaId, onSelectPdca, onRefresh, 
           </div>
 
           {/* Distribuição por fase */}
-          <div className="rounded-2xl border border-[#1B9BEE]/20 bg-[#001D30]/70 p-5">
+          <div className="rounded-2xl border border-[#1E7FD5]/20 bg-[#08192E]/70 p-5">
             <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-400">Distribuição por Fase</h3>
             <div className="mt-4 space-y-3">
               {phaseDistribution.map(({ phase, count, percent }) => {
@@ -341,7 +341,7 @@ export function PortfolioView({ pdcas, selectedPdcaId, onSelectPdca, onRefresh, 
           </div>
 
           {/* Timeline */}
-          <div className="rounded-2xl border border-[#1B9BEE]/20 bg-[#001D30]/70 p-5">
+          <div className="rounded-2xl border border-[#1E7FD5]/20 bg-[#08192E]/70 p-5">
             <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-400">PDCAs Recentes</h3>
             <div className="mt-4 space-y-2">
               {pdcas.slice(0, 6).map((pdca) => {

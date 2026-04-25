@@ -4,18 +4,19 @@ import { useState, useRef, useCallback } from "react";
 import { Upload, FileSpreadsheet, CheckCircle, XCircle, AlertTriangle, ChevronRight, RefreshCw, Save, X, Layers3, ListChecks, Clock, Gauge, Info, Database, ArrowRight } from "lucide-react";
 import * as XLSX from "xlsx";
 import { PdcaRecord, PdcaPhase } from "@/lib/types";
+import { T } from "@/lib/tokens";
 
 const COLORS = {
-  bg: "#001D30",
-  neon: "#1B9BEE",
-  neonSecondary: "#0066B3",
-  neonGlow: "rgba(27, 155, 238, 0.25)",
-  white: "#FFFFFF",
-  gray: "#C3E6FF",
-  success: "#10B981",
-  progress: "#F97316",
-  error: "#EF4444",
-  warning: "#FACC15"
+  bg:           T.bg,
+  neon:         T.primary,
+  neonSecondary:"#1565C0",
+  neonGlow:     T.primaryGlow,
+  white:        T.text,
+  gray:         T.textSub,
+  success:      T.success,
+  progress:     T.warning,
+  error:        T.error,
+  warning:      "#FACC15"
 };
 
 type ImportViewProps = {
@@ -376,11 +377,11 @@ export function ImportView({ onRefresh, onImport, onDataImported }: ImportViewPr
   return (
     <div className="space-y-5" style={{ backgroundColor: COLORS.bg, padding: "16px" }}>
       {/* Header com Glow */}
-      <div className="relative rounded-2xl border border-cyan-500/30 bg-cyan-950/20 p-6" style={{ boxShadow: `0 0 30px ${COLORS.neonGlow}` }}>
+      <div className="relative rounded-2xl border border-cyan-500/30 bg-cyan-950/20 p-6">
         <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-cyan-500/5 to-blue-500/5 pointer-events-none" />
         <div className="relative flex items-center justify-between">
           <div>
-            <h2 className="text-2xl font-bold" style={{ color: COLORS.neon, textShadow: `0_0_10px_${COLORS.neon}` }}>
+            <h2 className="text-2xl font-bold" style={{ color: COLORS.neon }}>
               Importação Inteligente de PDCA
             </h2>
             <p className="mt-2 text-sm" style={{ color: COLORS.gray }}>
@@ -722,7 +723,7 @@ export function ImportView({ onRefresh, onImport, onDataImported }: ImportViewPr
                   <Gauge className="h-4 w-4" style={{ color: COLORS.neon }} />
                   <span className="text-sm font-medium" style={{ color: COLORS.white }}>Efetividade</span>
                 </div>
-                <span className="text-lg font-bold" style={{ color: COLORS.neon, textShadow: `0_0_10px_${COLORS.neon}` }}>{stats.completion}%</span>
+                <span className="text-lg font-bold" style={{ color: COLORS.neon }}>{stats.completion}%</span>
               </div>
             </div>
           </div>

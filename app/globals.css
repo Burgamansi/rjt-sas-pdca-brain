@@ -7,7 +7,10 @@ body {
 
 body {
   margin: 0;
-  font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  background-color: #08192E;
+  color: #EEF4FA;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 * {
@@ -15,17 +18,15 @@ body {
 }
 
 ::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
+  width: 6px;
+  height: 6px;
 }
 
 ::-webkit-scrollbar-thumb {
   border-radius: 999px;
-  border: 2px solid transparent;
-  background-clip: content-box;
-  background-color: rgba(27, 155, 238, 0.35);
+  background-color: rgba(30, 127, 213, 0.4);
 }
 
 ::-webkit-scrollbar-track {
-  background: rgba(0, 29, 48, 0.8);
+  background: #08192E;
 }
