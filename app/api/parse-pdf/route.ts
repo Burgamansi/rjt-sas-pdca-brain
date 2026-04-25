@@ -256,7 +256,8 @@ function parseTabelaMestreFormat(text: string, filename: string): RawRow[] {
     const block     = sub[3].replace(/\s+/g, " ").trim();
 
     // Use the month as an anchor to split block into: [steps zone] [RESP] [PRAZO] [EVIDÊNCIA]
-    const monthPat = new RegExp(`\\b(${MONTHS_PT.join("|")})\\b`, "i");
+    // No \b — accented chars like "Março" have non-ASCII chars that confuse ASCII word boundaries
+    const monthPat = new RegExp(`(${MONTHS_PT.join("|")})`, "i");
     const prazoM   = block.match(monthPat);
     const prazo    = prazoM?.[1] ?? "";
     const prazoIdx = prazoM ? prazoM.index! : block.length;

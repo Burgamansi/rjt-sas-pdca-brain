@@ -343,12 +343,14 @@ export function ImportView({ onRefresh, onImport, onDataImported }: ImportViewPr
 
   const handleImport = useCallback(async () => {
     if (parsedRows.length === 0) return;
-    
+
     setImporting(true);
     setCurrentStep("sincronizacao");
 
     try {
       const pdcas = convertToPdcaRecords(parsedRows);
+      // Update local state immediately so the grid reflects the import even if server sync fails
+      onDataImported(pdcas);
       const response = await fetch("/api/pdcas", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -357,13 +359,12 @@ export function ImportView({ onRefresh, onImport, onDataImported }: ImportViewPr
 
       if (response.ok) {
         setSuccess(true);
-        onDataImported(pdcas);
         onRefresh();
       } else {
-        setErrors(["Erro ao sincronizar com o servidor"]);
+        setErrors(["Dados importados localmente. Sincronização com servidor falhou."]);
       }
     } catch (e) {
-      setErrors([`Erro: ${e}`]);
+      setErrors([`Dados importados localmente. Erro de rede: ${e}`]);
     } finally {
       setImporting(false);
     }
@@ -818,7 +819,11 @@ export function ImportView({ onRefresh, onImport, onDataImported }: ImportViewPr
                 <CheckCircle className="h-6 w-6" style={{ color: COLORS.success }} />
                 <div>
                   <h3 className="text-lg font-semibold" style={{ color: COLORS.white }}>Importação concluída!</h3>
-                  <p className="text-sm" style={{ color: COLORS.gray }}>{parsedRows.length} registros sincronizados com sucesso.</p>
+                  <p className="text-sm" style={{ color: COLORS.gray }}>
+                    {importMode === "pdf"
+                      ? `${pdfResults.filter(r => r.status === "ok").reduce((s, r) => s + r.rowCount, 0)} subações sincronizadas com sucesso.`
+                      : `${parsedRows.length} registros sincronizados com sucesso.`}
+                  </p>
                 </div>
               </div>
             </div>
