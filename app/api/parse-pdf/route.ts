@@ -1,11 +1,35 @@
 import { NextRequest, NextResponse } from "next/server";
 import { inflateRaw } from "node:zlib";
 import { promisify } from "node:util";
+import { execFile, execFileSync } from "node:child_process";
+import { writeFileSync, unlinkSync } from "node:fs";
+import { join } from "node:path";
+import { tmpdir } from "node:os";
 import type { PdcaAction, PdcaPhase, PdcaRecord, PdcaSubaction } from "@/lib/types";
 
 const inflate = promisify(inflateRaw);
+const execFileAsync = promisify(execFile);
 
-// ── PDF text extractor (no external deps) ───────────────────────────────────
+// ── Check pdftotext availability once at startup ──────────────────────────────
+let hasPdfToText = false;
+try { execFileSync("which", ["pdftotext"]); hasPdfToText = true; } catch { /* not available */ }
+
+// ── Primary extractor: pdftotext (reliable for Word/LibreOffice PDFs) ────────
+async function extractWithPdfToText(buf: Buffer): Promise<string> {
+  const tmp = join(tmpdir(), `pdca_${Date.now()}_${Math.random().toString(36).slice(2)}.pdf`);
+  try {
+    writeFileSync(tmp, buf);
+    const { stdout } = await execFileAsync("pdftotext", ["-enc", "UTF-8", tmp, "-"], {
+      timeout: 15_000,
+      maxBuffer: 10 * 1024 * 1024,
+    });
+    return stdout.trim();
+  } finally {
+    try { unlinkSync(tmp); } catch { /* ignore cleanup errors */ }
+  }
+}
+
+// ── Fallback extractor: BT/ET stream scanner ─────────────────────────────────
 // Supports FlateDecode streams with BT/ET text operators (Word/LibreOffice PDFs).
 
 function decodePdfStr(raw: string): string {
@@ -43,7 +67,7 @@ function btTextFromStream(content: string): string {
   return parts.filter(Boolean).join(" ");
 }
 
-async function extractPdfText(buf: Buffer): Promise<string> {
+async function extractPdfTextFallback(buf: Buffer): Promise<string> {
   const texts: string[] = [];
   let pos = 0;
 
@@ -88,6 +112,17 @@ async function extractPdfText(buf: Buffer): Promise<string> {
   }
 
   return texts.join(" ").replace(/\s+/g, " ").trim();
+}
+
+// ── Combined extractor: pdftotext first, BT/ET fallback ───────────────────────
+async function extractPdfText(buf: Buffer): Promise<string> {
+  if (hasPdfToText) {
+    try {
+      const text = await extractWithPdfToText(buf);
+      if (text.length > 50) return text;
+    } catch { /* fall through to BT/ET */ }
+  }
+  return extractPdfTextFallback(buf);
 }
 
 // ── Row parsing (same logic as DOCX parser) ──────────────────────────────────
@@ -215,9 +250,9 @@ function parseTabelaMestreFormat(text: string, filename: string): RawRow[] {
   const pdcaNum = pdcaNumMatch ? pdcaNumMatch[1].padStart(2, "0") : "01";
   const codPdca = `PDCA${pdcaNum}`;
 
-  // Collect AÇÃO titles
+  // Collect AÇÃO titles (stop before "ID SUB" header or next column data)
   const acaoTitles = new Map<string, string>();
-  const acaoRe = /AÇÃO\s*(\d{1,2})\s*[–\-]\s*([^\n]{5,80})/g;
+  const acaoRe = /AÇÃO\s*(\d{1,2})\s*[–\-]\s*(.+?)(?=\s+ID\s|\s+A\d{2}\s|\s{2,}|$)/g;
   let am: RegExpExecArray | null;
   while ((am = acaoRe.exec(norm)) !== null) {
     acaoTitles.set(am[1].padStart(2, "0"), am[2].trim());
