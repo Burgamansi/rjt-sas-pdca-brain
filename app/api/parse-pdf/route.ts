@@ -3,11 +3,15 @@ import { inflateRaw } from "node:zlib";
 import { promisify } from "node:util";
 import type { PdcaAction, PdcaPhase, PdcaRecord, PdcaSubaction } from "@/lib/types";
 
+// Force Node.js runtime (not Edge) — required for pdf-parse / pdfjs-dist
+export const runtime = "nodejs";
+
 const inflate = promisify(inflateRaw);
 
 // ── Primary extractor: pdf-parse (pure JS, Vercel-compatible) ────────────────
+// Use lib/pdf-parse directly to avoid the index.js test-mode issue in Next.js builds
 // eslint-disable-next-line @typescript-eslint/no-require-imports
-const pdfParse = require("pdf-parse") as (buf: Buffer) => Promise<{ text: string; numpages: number }>;
+const pdfParse = require("pdf-parse/lib/pdf-parse") as (buf: Buffer) => Promise<{ text: string; numpages: number }>;
 
 async function extractWithPdfParse(buf: Buffer): Promise<string> {
   const data = await pdfParse(buf);
