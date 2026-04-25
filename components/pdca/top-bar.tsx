@@ -1,6 +1,6 @@
 "use client";
 
-import { RefreshCcw, Search, Upload, X } from "lucide-react";
+import { Menu, RefreshCcw, Search, Upload, X } from "lucide-react";
 import { useAppState, PdcaFilter } from "@/lib/app-state";
 import { PdcaPhase } from "@/lib/types";
 
@@ -10,6 +10,7 @@ type TopBarProps = {
   localMode: boolean;
   onRefresh: () => void;
   onOpenImport: () => void;
+  onOpenSidebar: () => void;
 };
 
 const PHASE_LABEL: Record<PdcaPhase | "all", string> = {
@@ -28,7 +29,7 @@ const FILTER_LABEL: Record<PdcaFilter, string> = {
   pending: "Pendente",
 };
 
-export function TopBar({ importing, loading, localMode, onRefresh, onOpenImport }: TopBarProps) {
+export function TopBar({ importing, loading, localMode, onRefresh, onOpenImport, onOpenSidebar }: TopBarProps) {
   const {
     searchTerm,
     setSearchTerm,
@@ -56,18 +57,27 @@ export function TopBar({ importing, loading, localMode, onRefresh, onOpenImport 
 
   return (
     <header className="space-y-2">
-      <div className="rounded-2xl border border-[#1E7FD5]/15 bg-[#08192E]/85 px-5 py-3.5 shadow-[0_4px_20px_-8px_rgba(0,0,0,0.5)] backdrop-blur-sm">
-        <div className="flex flex-wrap items-center gap-3">
+      <div className="rounded-2xl border border-[#1E7FD5]/15 bg-[#08192E]/85 px-4 py-3 shadow-[0_4px_20px_-8px_rgba(0,0,0,0.5)] backdrop-blur-sm">
+        <div className="flex items-center gap-2">
+
+          {/* Hamburger — só no mobile */}
+          <button
+            onClick={onOpenSidebar}
+            className="lg:hidden flex-shrink-0 rounded-xl border border-[#1E7FD5]/20 bg-[#08192E]/60 p-2 text-slate-400 hover:text-white transition-colors"
+            aria-label="Abrir menu"
+          >
+            <Menu className="h-5 w-5" />
+          </button>
 
           {/* Busca global */}
-          <div className="relative min-w-[240px] flex-1">
-            <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500 pointer-events-none" />
+          <div className="relative min-w-0 flex-1">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500 pointer-events-none" />
             <input
               type="text"
-              placeholder="Buscar subações, responsáveis, ações..."
+              placeholder="Buscar subações, responsáveis..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full rounded-xl border border-[#1E7FD5]/20 bg-[#08192E]/60 py-2 pl-10 pr-9 text-sm text-white placeholder:text-slate-500 focus:border-cyan-500/60 focus:outline-none focus:ring-1 focus:ring-cyan-500/30 transition-all"
+              className="w-full rounded-xl border border-[#1E7FD5]/20 bg-[#08192E]/60 py-2 pl-9 pr-9 text-sm text-white placeholder:text-slate-500 focus:border-cyan-500/60 focus:outline-none focus:ring-1 focus:ring-cyan-500/30 transition-all"
             />
             {searchTerm && (
               <button
@@ -80,12 +90,12 @@ export function TopBar({ importing, loading, localMode, onRefresh, onOpenImport 
           </div>
 
           {/* Botões de ação */}
-          <div className="flex items-center gap-2">
+          <div className="flex flex-shrink-0 items-center gap-2">
             <button
               onClick={onRefresh}
               disabled={loading}
               type="button"
-              className="inline-flex items-center gap-2 rounded-xl border border-[#1E7FD5]/20 bg-[#08192E]/60 px-4 py-2 text-sm font-medium text-slate-300 transition-all hover:border-[#1E7FD5]/40 hover:bg-[#08192E] hover:text-white disabled:opacity-40"
+              className="inline-flex items-center gap-2 rounded-xl border border-[#1E7FD5]/20 bg-[#08192E]/60 px-3 py-2 text-sm font-medium text-slate-300 transition-all hover:border-[#1E7FD5]/40 hover:bg-[#08192E] hover:text-white disabled:opacity-40"
             >
               <RefreshCcw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
               <span className="hidden sm:inline">Atualizar</span>
@@ -94,10 +104,10 @@ export function TopBar({ importing, loading, localMode, onRefresh, onOpenImport 
               onClick={onOpenImport}
               disabled={importing}
               type="button"
-              className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#1E7FD5] to-[#0066B3] px-4 py-2 text-sm font-semibold text-white shadow-[0_0_18px_rgba(30,127,213,0.3)] transition-all hover:from-[#82C4F8] hover:to-[#1E7FD5] hover:shadow-[0_0_24px_rgba(30,127,213,0.45)] disabled:opacity-40"
+              className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#1E7FD5] to-[#0066B3] px-3 py-2 text-sm font-semibold text-white shadow-[0_0_18px_rgba(30,127,213,0.3)] transition-all hover:from-[#82C4F8] hover:to-[#1E7FD5] disabled:opacity-40"
             >
-              <Upload className="h-4 w-4" />
-              {importing ? "Importando..." : "Importar Excel / DOCX / PDF"}
+              <Upload className="h-4 w-4 flex-shrink-0" />
+              <span className="hidden sm:inline">{importing ? "Importando..." : "Importar"}</span>
             </button>
           </div>
         </div>
