@@ -1,36 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
 import { inflateRaw } from "node:zlib";
 import { promisify } from "node:util";
-import { execFile, execFileSync } from "node:child_process";
-import { writeFileSync, unlinkSync } from "node:fs";
-import { join } from "node:path";
-import { tmpdir } from "node:os";
 import type { PdcaAction, PdcaPhase, PdcaRecord, PdcaSubaction } from "@/lib/types";
 
 const inflate = promisify(inflateRaw);
-const execFileAsync = promisify(execFile);
 
-// ── Check pdftotext availability once at startup ──────────────────────────────
-let hasPdfToText = false;
-try { execFileSync("which", ["pdftotext"]); hasPdfToText = true; } catch { /* not available */ }
+// ── Primary extractor: pdf-parse (pure JS, Vercel-compatible) ────────────────
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const pdfParse = require("pdf-parse") as (buf: Buffer) => Promise<{ text: string; numpages: number }>;
 
-// ── Primary extractor: pdftotext (reliable for Word/LibreOffice PDFs) ────────
-async function extractWithPdfToText(buf: Buffer): Promise<string> {
-  const tmp = join(tmpdir(), `pdca_${Date.now()}_${Math.random().toString(36).slice(2)}.pdf`);
-  try {
-    writeFileSync(tmp, buf);
-    const { stdout } = await execFileAsync("pdftotext", ["-enc", "UTF-8", tmp, "-"], {
-      timeout: 15_000,
-      maxBuffer: 10 * 1024 * 1024,
-    });
-    return stdout.trim();
-  } finally {
-    try { unlinkSync(tmp); } catch { /* ignore cleanup errors */ }
-  }
+async function extractWithPdfParse(buf: Buffer): Promise<string> {
+  const data = await pdfParse(buf);
+  return data.text ?? "";
 }
 
-// ── Fallback extractor: BT/ET stream scanner ─────────────────────────────────
-// Supports FlateDecode streams with BT/ET text operators (Word/LibreOffice PDFs).
+// ── Fallback extractor: BT/ET stream scanner (no external deps) ──────────────
+// Used when pdf-parse is unavailable or fails.
 
 function decodePdfStr(raw: string): string {
   return raw
@@ -114,14 +99,12 @@ async function extractPdfTextFallback(buf: Buffer): Promise<string> {
   return texts.join(" ").replace(/\s+/g, " ").trim();
 }
 
-// ── Combined extractor: pdftotext first, BT/ET fallback ───────────────────────
+// ── Combined extractor: pdf-parse → BT/ET fallback ────────────────────────────
 async function extractPdfText(buf: Buffer): Promise<string> {
-  if (hasPdfToText) {
-    try {
-      const text = await extractWithPdfToText(buf);
-      if (text.length > 50) return text;
-    } catch { /* fall through to BT/ET */ }
-  }
+  try {
+    const text = await extractWithPdfParse(buf);
+    if (text.length > 50) return text;
+  } catch { /* fall through to BT/ET */ }
   return extractPdfTextFallback(buf);
 }
 
@@ -268,36 +251,44 @@ function parseTabelaMestreFormat(text: string, filename: string): RawRow[] {
     const subNum    = sub[2];
     const block     = sub[3].replace(/\s+/g, " ").trim();
 
-    const firstStep = block.search(/\b1\.\s+/);
-    const preStep   = firstStep >= 0 ? block.slice(0, firstStep).trim() : block;
-    const fromStep  = firstStep >= 0 ? block.slice(firstStep) : "";
+    // Use the month as an anchor to split block into: [steps zone] [RESP] [PRAZO] [EVIDÊNCIA]
+    const monthPat = new RegExp(`\\b(${MONTHS_PT.join("|")})\\b`, "i");
+    const prazoM   = block.match(monthPat);
+    const prazo    = prazoM?.[1] ?? "";
+    const prazoIdx = prazoM ? prazoM.index! : block.length;
 
-    // Numbered como-fazer steps
+    // Text before month: description + steps + responsavel
+    const beforeMonth = block.slice(0, prazoIdx).trim();
+    // Text after month: evidência
+    const afterMonth  = block.slice(prazoIdx + (prazo.length || 0)).trim();
+
+    // Responsável: last keyword match in beforeMonth
+    const respPat = new RegExp(`(${RESP_KEYWORDS.join("|")})(?:\\s*\\+\\s*(?:${RESP_KEYWORDS.join("|")}))?`, "gi");
+    let respM: RegExpExecArray | null;
+    let lastResp = "";
+    while ((respM = respPat.exec(beforeMonth)) !== null) lastResp = respM[0];
+    const responsavel = lastResp.replace(/\s+/g, " ").trim();
+
+    // Steps zone: text before the responsavel keyword (or before month if no resp)
+    const respIdx = responsavel ? beforeMonth.lastIndexOf(responsavel) : beforeMonth.length;
+    const stepsZone = beforeMonth.slice(0, respIdx).trim();
+
+    // Description: text before first numbered step in stepsZone
+    const firstStepIdx = stepsZone.search(/\b1\.\s+/);
+    const descricaoRaw = firstStepIdx >= 0 ? stepsZone.slice(0, firstStepIdx) : stepsZone.slice(0, 80);
+    const descricao = descricaoRaw.replace(/\s+/g, " ").trim().slice(0, 140) || `Subação ${actionNum}.${subNum}`;
+
+    // Steps: numbered items from stepsZone
+    const fromStep = firstStepIdx >= 0 ? stepsZone.slice(firstStepIdx) : "";
     const items: string[] = [];
     const stepRe = /\b\d+\.\s+(.+?)(?=\s+\d+\.\s+|$)/g;
     let nm: RegExpExecArray | null;
     while ((nm = stepRe.exec(fromStep)) !== null) items.push(nm[1].trim().replace(/\s+/g, " "));
     const comoFazer = items.map((it, i) => `${i + 1}. ${it}`).join("\n");
 
-    // Responsável
-    const respPat = new RegExp(
-      `(${RESP_KEYWORDS.join("|")})(?:\\s*[+/]\\s*(${RESP_KEYWORDS.join("|")}))?`, "i");
-    const respM = preStep.match(respPat) ?? block.match(respPat);
-    const responsavel = respM ? respM[0].replace(/\s+/g, " ").trim() : "";
-
-    // Prazo
-    const prazoM = block.match(new RegExp(`\\b(${MONTHS_PT.join("|")})\\b`, "i"));
-    const prazo  = prazoM?.[1] ?? "";
-
-    // Evidência: word/phrase after prazo
-    const evidM = block.match(new RegExp(
-      `(?:${MONTHS_PT.join("|")})\\s+([A-ZÁÀÂÃÉÈÍÓÔÕÚÇa-záàâãéèíóôõúç]{3,40})`, "i"));
+    // Evidência: first meaningful word after month
+    const evidM = afterMonth.match(/^([A-ZÁÀÂÃÉÈÍÓÔÕÚÇa-záàâãéèíóôõúç][^\s]{2,30})/);
     const evidencia = evidM?.[1] ?? "";
-
-    let descricao = preStep
-      .replace(responsavel, "").replace(prazo, "")
-      .replace(/\s+/g, " ").trim().slice(0, 140).trim();
-    if (!descricao) descricao = `Subação ${actionNum}.${subNum}`;
 
     rows.push({
       id:         `${codPdca}-A${actionNum}-${subNum}`,
