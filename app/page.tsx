@@ -318,8 +318,8 @@ export default function Page() {
           <section className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
             <KpiCard
               title="PDCAs Ativos"
-              value={String(stats.pdcaCount)}
-              subtitle="Portfolio consolidado"
+              value={String(stats.excelPdcaCount)}
+              subtitle={`${stats.pdcaCount} total no portfolio`}
               gradientClassName="bg-gradient-to-br from-[#1E7FD5] to-[#1565C0]"
               icon={Layers3}
               filter="all"
