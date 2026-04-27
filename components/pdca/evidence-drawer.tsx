@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, type ReactNode } from "react";
 import {
   X,
   Upload,
@@ -15,6 +15,161 @@ import {
   CheckCircle,
   Paperclip,
 } from "lucide-react";
+
+// ─── Rich Text Parser ────────────────────────────────────────────────────────
+
+type TextBlock =
+  | { kind: "intro"; text: string }
+  | { kind: "section"; emoji: string; header: string; bullets: string[]; closing: string };
+
+const EMOJI_PATTERN = /🔴|🟠|🟡|🟢|🔵|🟣|⚫|⚪|🟤|🔶|🔷|🔸|🔹/;
+
+function parseRichText(text: string): TextBlock[] {
+  if (!text?.trim()) return [];
+
+  const parts = text.split(/(?=🔴|🟠|🟡|🟢|🔵|🟣|⚫|⚪|🟤|🔶|🔷|🔸|🔹)/);
+  const blocks: TextBlock[] = [];
+
+  for (const part of parts) {
+    const trimmed = part.trim();
+    if (!trimmed) continue;
+
+    const emojiMatch = trimmed.match(/^(🔴|🟠|🟡|🟢|🔵|🟣|⚫|⚪|🟤|🔶|🔷|🔸|🔹)\s*([\s\S]*)$/);
+    if (!emojiMatch) {
+      blocks.push({ kind: "intro", text: trimmed });
+      continue;
+    }
+
+    const [, emoji, rest] = emojiMatch;
+    const firstBullet = rest.indexOf("•");
+    const header = firstBullet === -1 ? rest.trim() : rest.substring(0, firstBullet).trim();
+    const bulletText = firstBullet === -1 ? "" : rest.substring(firstBullet);
+
+    const rawBullets = bulletText.split(/•/).filter((b) => b.trim());
+    const bullets: string[] = [];
+    let closing = "";
+
+    rawBullets.forEach((raw, idx) => {
+      const item = raw.trim();
+      if (idx < rawBullets.length - 1) {
+        bullets.push(item);
+      } else {
+        // Detecta parágrafo de fechamento após o último ")" do bullet
+        const match = item.match(/^([\s\S]+?\))\s+([A-ZÁÀÂÃÉÈÍÓÔÕÚÇ][\s\S]*)$/);
+        if (match) {
+          bullets.push(match[1].trim());
+          closing = match[2].trim();
+        } else {
+          bullets.push(item);
+        }
+      }
+    });
+
+    blocks.push({ kind: "section", emoji, header, bullets, closing });
+  }
+
+  return blocks;
+}
+
+function emojiTheme(emoji: string) {
+  if (emoji === "🔴" || emoji === "🟠")
+    return { border: "border-rose-500/25", bg: "bg-rose-500/8", heading: "text-rose-300", dot: "bg-rose-500", badge: "bg-rose-500/20 text-rose-300" };
+  if (emoji === "🔵" || emoji === "🟣")
+    return { border: "border-blue-500/25", bg: "bg-blue-500/8", heading: "text-blue-300", dot: "bg-blue-500", badge: "bg-blue-500/20 text-blue-300" };
+  if (emoji === "🟢")
+    return { border: "border-emerald-500/25", bg: "bg-emerald-500/8", heading: "text-emerald-300", dot: "bg-emerald-500", badge: "bg-emerald-500/20 text-emerald-300" };
+  if (emoji === "🟡")
+    return { border: "border-amber-500/25", bg: "bg-amber-500/8", heading: "text-amber-300", dot: "bg-amber-500", badge: "bg-amber-500/20 text-amber-300" };
+  return { border: "border-slate-600/30", bg: "bg-slate-800/30", heading: "text-slate-200", dot: "bg-slate-400", badge: "bg-slate-700/60 text-slate-300" };
+}
+
+function emojiLabel(emoji: string): string {
+  const map: Record<string, string> = {
+    "🔴": "Atenção",
+    "🟠": "Aviso",
+    "🟡": "Em andamento",
+    "🟢": "OK / Concluído",
+    "🔵": "Informação",
+    "🟣": "Referência",
+    "🔶": "Destaque",
+    "🔷": "Processo",
+    "🔸": "Detalhe",
+    "🔹": "Tópico",
+    "⚫": "Geral",
+    "⚪": "Neutro",
+    "🟤": "Histórico",
+  };
+  return map[emoji] ?? "Seção";
+}
+
+function RichText({ text }: { text: string }) {
+  const blocks = parseRichText(text);
+  if (!blocks.length) return <span className="text-slate-500 text-sm">—</span>;
+
+  const sectionCount = blocks.filter(b => b.kind === "section").length;
+  let stepIdx = 0;
+
+  return (
+    <div className="space-y-3">
+      {blocks.map((block, i) => {
+        if (block.kind === "intro") {
+          return (
+            <p key={i} className="text-sm text-slate-300 leading-relaxed px-0.5">
+              {block.text}
+            </p>
+          );
+        }
+
+        stepIdx++;
+        const t = emojiTheme(block.emoji);
+
+        return (
+          <div key={i} className={`rounded-xl border ${t.border} ${t.bg} overflow-hidden`}>
+            {/* Cabeçalho */}
+            <div className={`flex items-center gap-2.5 px-3.5 py-2.5 border-b ${t.border}`}>
+              <span className="text-base leading-none flex-shrink-0">{block.emoji}</span>
+              <div className="flex-1 min-w-0">
+                {block.header ? (
+                  <p className={`text-sm font-semibold leading-snug ${t.heading}`}>{block.header}</p>
+                ) : (
+                  <p className={`text-xs font-semibold uppercase tracking-wider opacity-80 ${t.heading}`}>
+                    {emojiLabel(block.emoji)}
+                  </p>
+                )}
+              </div>
+              {sectionCount > 1 && (
+                <span className={`text-[10px] font-bold tabular-nums px-1.5 py-0.5 rounded-md ${t.badge}`}>
+                  {stepIdx}/{sectionCount}
+                </span>
+              )}
+            </div>
+
+            {/* Itens numerados */}
+            {block.bullets.length > 0 && (
+              <ol className="px-3.5 py-3 space-y-2.5">
+                {block.bullets.map((bullet, j) => (
+                  <li key={j} className="flex items-start gap-2.5 text-xs text-slate-300">
+                    <span className={`mt-0.5 flex-shrink-0 h-4 w-4 rounded-full ${t.dot} flex items-center justify-center text-[9px] font-bold text-white`}>
+                      {j + 1}
+                    </span>
+                    <span className="leading-relaxed flex-1">{bullet}</span>
+                  </li>
+                ))}
+              </ol>
+            )}
+
+            {/* Parágrafo de fechamento */}
+            {block.closing && (
+              <div className={`px-3.5 pb-3 border-t ${t.border}`}>
+                <p className="pt-2.5 text-xs text-slate-400 leading-relaxed italic">{block.closing}</p>
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
 import { fetchEvidences, uploadEvidence, type Evidence } from "@/lib/evidences";
 
 type EvidenceFile = {
@@ -164,104 +319,108 @@ export function EvidenceDrawer({ isOpen, onClose, subAction }: EvidenceDrawerPro
         onClick={onClose}
       />
 
-      <aside className="fixed right-0 top-0 h-full w-full max-w-md bg-[#08192E] border-l border-[#1E7FD5]/20 z-50 overflow-y-auto">
-        <div className="sticky top-0 bg-[#08192E] border-b border-[#1E7FD5]/20 p-4 flex items-center justify-between">
-          <div>
-            <h2 className="text-lg font-bold text-white">Detalhes da Subação</h2>
-            <p className="text-sm text-slate-400">{subAction.id}</p>
+      <aside className="fixed right-0 top-0 h-full w-full sm:max-w-lg bg-[#08192E] border-l border-[#1E7FD5]/20 z-50 flex flex-col">
+        {/* ── Cabeçalho fixo ── */}
+        <div className="flex-shrink-0 bg-[#08192E] border-b border-[#1E7FD5]/20 px-5 py-4">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-[10px] font-semibold uppercase tracking-widest text-slate-500">{subAction.pdcaId}</span>
+                <span className="text-slate-700">·</span>
+                <span className="text-[10px] font-semibold uppercase tracking-widest text-slate-500">{subAction.id}</span>
+              </div>
+              <h2 className="text-base font-bold text-white leading-snug line-clamp-2">{subAction.descricao}</h2>
+            </div>
+            <button
+              onClick={onClose}
+              className="flex-shrink-0 p-2 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-white transition-colors mt-0.5"
+            >
+              <X className="h-5 w-5" />
+            </button>
           </div>
-          <button
-            onClick={onClose}
-            className="p-2 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-white"
-          >
-            <X className="h-5 w-5" />
-          </button>
-        </div>
 
-        <div className="p-4 space-y-6">
-          <section>
-            <h3 className="text-sm font-semibold text-slate-300 mb-3">INFORMAÇÕES</h3>
-            <div className="bg-slate-800/50 rounded-xl p-4 space-y-3">
-              <div>
-                <p className="text-xs text-slate-500 mb-1">Descrição</p>
-                <p className="text-sm font-medium text-white">{subAction.descricao}</p>
-              </div>
-              {subAction.comoFazer && (
-                <div>
-                  <p className="text-xs text-slate-500 mb-1">Como Fazer</p>
-                  <p className="text-sm text-slate-200">{subAction.comoFazer}</p>
-                </div>
-              )}
-              {subAction.evidenciaSgq && (
-                <div>
-                  <p className="text-xs text-slate-500 mb-1">Evidência SGQ Esperada</p>
-                  <p className="text-sm text-cyan-300 font-medium">{subAction.evidenciaSgq}</p>
-                </div>
-              )}
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <p className="text-xs text-slate-500 mb-1">Responsável</p>
-                  <p className="text-sm font-medium text-white">{subAction.responsavel}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-slate-500 mb-1">Prazo</p>
-                  <p className={`text-sm font-medium ${late ? "text-red-400" : "text-white"}`}>
-                    {subAction.prazo || "--"}
-                  </p>
-                </div>
-              </div>
-              <div>
-                <p className="text-xs text-slate-500 mb-1">Status</p>
-                <span
-                  className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${
-                    subAction.status === "Concluído"
-                      ? "border-emerald-400 bg-emerald-500/20 text-emerald-300"
-                      : "border-amber-400 bg-amber-500/20 text-amber-300"
-                  }`}
-                >
-                  {subAction.status}
-                </span>
-              </div>
-            </div>
-          </section>
-
-          <section>
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-sm font-semibold text-slate-300">ANDAMENTO</h3>
-              <span className="text-lg font-bold text-[#1E7FD5]">
-                {subAction.progresso}%
+          {/* Status + progresso inline */}
+          <div className="flex items-center gap-3 mt-3">
+            <span className={`inline-flex rounded-full border px-2.5 py-0.5 text-xs font-semibold ${
+              subAction.status?.toLowerCase().includes("conclu")
+                ? "border-emerald-400/50 bg-emerald-500/15 text-emerald-300"
+                : subAction.status?.toLowerCase().includes("andamento") || subAction.status?.toLowerCase().includes("exec")
+                  ? "border-amber-400/50 bg-amber-500/15 text-amber-300"
+                  : "border-slate-600/50 bg-slate-700/30 text-slate-400"
+            }`}>
+              {subAction.status || "Pendente"}
+            </span>
+            {late && (
+              <span className="inline-flex items-center gap-1 rounded-full border border-rose-500/40 bg-rose-500/15 px-2.5 py-0.5 text-xs font-semibold text-rose-300">
+                <AlertTriangle className="h-3 w-3" />
+                Atrasado
               </span>
-            </div>
-            <div className="bg-slate-800/50 rounded-xl p-4">
-              <div className="h-2 bg-slate-700 rounded-full overflow-hidden mb-3">
+            )}
+            <div className="flex-1 flex items-center gap-2">
+              <div className="flex-1 h-1.5 bg-slate-800 rounded-full overflow-hidden">
                 <div
                   className={`h-full rounded-full transition-all ${
-                    subAction.progresso >= 90
-                      ? "bg-emerald-500"
-                      : subAction.progresso >= 70
-                        ? "bg-amber-500"
-                        : "bg-rose-500"
+                    subAction.progresso >= 90 ? "bg-emerald-500" : subAction.progresso >= 50 ? "bg-amber-500" : "bg-rose-500"
                   }`}
                   style={{ width: `${subAction.progresso}%` }}
                 />
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="flex items-center gap-2">
-                  <Paperclip className="h-4 w-4 text-slate-400" />
-                  <div>
-                    <p className="text-xs text-slate-500">Arquivos</p>
-                    <p className="text-sm font-semibold text-white">{files.length}</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Clock className="h-4 w-4 text-slate-400" />
-                  <div>
-                    <p className="text-xs text-slate-500">Última Atualização</p>
-                    <p className="text-sm font-semibold text-white">
-                      {lastUpdate ? formatDate(lastUpdate) : "--"}
-                    </p>
-                  </div>
-                </div>
+              <span className="text-xs font-bold tabular-nums text-slate-400 flex-shrink-0">{subAction.progresso}%</span>
+            </div>
+          </div>
+        </div>
+
+        {/* ── Corpo rolável ── */}
+        <div className="flex-1 overflow-y-auto">
+        <div className="px-5 py-5 space-y-6">
+
+          {/* ── Metadados ── */}
+          <section className="grid grid-cols-2 gap-3">
+            <div className="rounded-xl bg-slate-800/50 p-3">
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-500 mb-1">Responsável</p>
+              <p className="text-sm font-medium text-white">{subAction.responsavel || "—"}</p>
+            </div>
+            <div className={`rounded-xl p-3 ${late ? "bg-rose-500/10 border border-rose-500/25" : "bg-slate-800/50"}`}>
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-500 mb-1">Prazo</p>
+              <p className={`text-sm font-medium ${late ? "text-rose-400" : "text-white"}`}>
+                {subAction.prazo || "—"}
+              </p>
+            </div>
+          </section>
+
+          {/* ── Como Fazer (rich text) ── */}
+          {subAction.comoFazer && (
+            <section>
+              <div className="flex items-center gap-2 mb-3">
+                <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-500">Como Fazer</p>
+                <div className="flex-1 h-px bg-slate-800" />
+              </div>
+              <RichText text={subAction.comoFazer} />
+            </section>
+          )}
+
+          {/* ── Evidência SGQ ── */}
+          {subAction.evidenciaSgq && (
+            <section className="rounded-xl border border-[#1E7FD5]/25 bg-[#1E7FD5]/8 p-3.5">
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-[#82C4F8] mb-1.5">Evidência SGQ Esperada</p>
+              <p className="text-sm text-blue-200 font-medium leading-relaxed">{subAction.evidenciaSgq}</p>
+            </section>
+          )}
+
+          {/* ── Stats inline ── */}
+          <section className="grid grid-cols-2 gap-3">
+            <div className="flex items-center gap-2.5 rounded-xl bg-slate-800/50 p-3">
+              <Paperclip className="h-4 w-4 text-slate-400 flex-shrink-0" />
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Arquivos</p>
+                <p className="text-sm font-bold text-white">{files.length}</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2.5 rounded-xl bg-slate-800/50 p-3">
+              <Clock className="h-4 w-4 text-slate-400 flex-shrink-0" />
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Atualização</p>
+                <p className="text-sm font-bold text-white">{lastUpdate ? formatDate(lastUpdate) : "—"}</p>
               </div>
             </div>
           </section>
@@ -366,6 +525,7 @@ export function EvidenceDrawer({ isOpen, onClose, subAction }: EvidenceDrawerPro
               )}
             </div>
           </section>
+        </div>
         </div>
       </aside>
     </>

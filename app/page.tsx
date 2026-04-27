@@ -121,6 +121,7 @@ export default function Page() {
   const [localMode, setLocalMode] = useState(false);
   const [message, setMessage] = useState("");
   const [logs, setLogs] = useState<ImportLogEntry[]>([]);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const pdcas = appPdcas;
@@ -269,13 +270,15 @@ export default function Page() {
   }
 
   return (
-    <div className="min-h-screen bg-[radial-gradient(circle_at_18%_12%,rgba(27,155,238,0.18),transparent_32%),radial-gradient(circle_at_82%_4%,rgba(195,230,255,0.10),transparent_30%),#001D30] text-slate-100">
+    <div className="min-h-screen bg-[#08192E] text-slate-100">
       <Sidebar
         pdcaCount={stats.pdcaCount}
         subactionCount={stats.subactionCount}
         doneCount={stats.done}
         completion={stats.completion}
         localMode={localMode}
+        isOpen={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
       />
 
       <main className="mx-auto max-w-[1600px] px-4 py-5 lg:pl-80 lg:pr-8">
@@ -285,6 +288,7 @@ export default function Page() {
           localMode={localMode}
           onRefresh={() => void loadPdcas()}
           onOpenImport={() => fileInputRef.current?.click()}
+          onOpenSidebar={() => setSidebarOpen(true)}
         />
         <input
           ref={fileInputRef}
@@ -299,7 +303,7 @@ export default function Page() {
         />
 
         {message ? (
-          <section className="mt-4 rounded-2xl border border-[#1B9BEE]/25 bg-[#1B9BEE]/10 px-4 py-3 text-sm text-[#C3E6FF]">
+          <section className="mt-4 rounded-2xl border border-[#1E7FD5]/25 bg-[#1E7FD5]/10 px-4 py-3 text-sm text-[#82C4F8]">
             {message}
           </section>
         ) : null}
@@ -316,7 +320,7 @@ export default function Page() {
               title="PDCAs Ativos"
               value={String(stats.pdcaCount)}
               subtitle="Portfolio consolidado"
-              gradientClassName="bg-gradient-to-br from-[#1B9BEE] to-[#0066B3]"
+              gradientClassName="bg-gradient-to-br from-[#1E7FD5] to-[#1565C0]"
               icon={Layers3}
               filter="all"
             />
@@ -324,7 +328,7 @@ export default function Page() {
               title="Subacoes"
               value={String(stats.subactionCount)}
               subtitle={`${stats.inProgress} em execucao`}
-              gradientClassName="bg-gradient-to-br from-[#C3E6FF] via-[#1B9BEE] to-[#0066B3]"
+              gradientClassName="bg-gradient-to-br from-[#82C4F8] via-[#1E7FD5] to-[#1565C0]"
               icon={ListChecks}
               filter="all"
             />
@@ -356,7 +360,7 @@ export default function Page() {
               title="Efetividade"
               value={`${stats.completion}%`}
               subtitle={`Media: ${stats.pdcaProgressAverage}%`}
-              gradientClassName="bg-gradient-to-br from-[#001D30] via-[#1B9BEE] to-[#C3E6FF]"
+              gradientClassName="bg-gradient-to-br from-[#08192E] via-[#1E7FD5] to-[#82C4F8]"
               icon={Gauge}
               filter="all"
             />
@@ -364,7 +368,7 @@ export default function Page() {
         )}
 
         {activeView === "painel" && (
-          <section className="mt-6 rounded-2xl border border-[#1B9BEE]/15 bg-[#001D30]/60 p-5">
+          <section className="mt-6 rounded-2xl border border-[#1E7FD5]/15 bg-[#08192E]/60 p-5">
             <div className="flex items-center justify-between gap-4">
               <div>
                 <h3 className="text-sm font-medium text-slate-300">Progresso Geral do PDCA</h3>

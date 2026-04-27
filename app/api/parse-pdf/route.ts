@@ -3,10 +3,23 @@ import { inflateRaw } from "node:zlib";
 import { promisify } from "node:util";
 import type { PdcaAction, PdcaPhase, PdcaRecord, PdcaSubaction } from "@/lib/types";
 
+// Force Node.js runtime (not Edge) — required for pdf-parse / pdfjs-dist
+export const runtime = "nodejs";
+
 const inflate = promisify(inflateRaw);
 
-// ── PDF text extractor (no external deps) ───────────────────────────────────
-// Supports FlateDecode streams with BT/ET text operators (Word/LibreOffice PDFs).
+// ── Primary extractor: pdf-parse (pure JS, Vercel-compatible) ────────────────
+// Use lib/pdf-parse directly to avoid the index.js test-mode issue in Next.js builds
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const pdfParse = require("pdf-parse/lib/pdf-parse") as (buf: Buffer) => Promise<{ text: string; numpages: number }>;
+
+async function extractWithPdfParse(buf: Buffer): Promise<string> {
+  const data = await pdfParse(buf);
+  return data.text ?? "";
+}
+
+// ── Fallback extractor: BT/ET stream scanner (no external deps) ──────────────
+// Used when pdf-parse is unavailable or fails.
 
 function decodePdfStr(raw: string): string {
   return raw
@@ -43,7 +56,7 @@ function btTextFromStream(content: string): string {
   return parts.filter(Boolean).join(" ");
 }
 
-async function extractPdfText(buf: Buffer): Promise<string> {
+async function extractPdfTextFallback(buf: Buffer): Promise<string> {
   const texts: string[] = [];
   let pos = 0;
 
@@ -88,6 +101,15 @@ async function extractPdfText(buf: Buffer): Promise<string> {
   }
 
   return texts.join(" ").replace(/\s+/g, " ").trim();
+}
+
+// ── Combined extractor: pdf-parse → BT/ET fallback ────────────────────────────
+async function extractPdfText(buf: Buffer): Promise<string> {
+  try {
+    const text = await extractWithPdfParse(buf);
+    if (text.length > 50) return text;
+  } catch { /* fall through to BT/ET */ }
+  return extractPdfTextFallback(buf);
 }
 
 // ── Row parsing (same logic as DOCX parser) ──────────────────────────────────
@@ -198,6 +220,101 @@ function buildRecord(rows: RawRow[], filename: string): PdcaRecord {
   };
 }
 
+// ── Parser for TABELA_MESTRE_PDCA format (A01 01.01 / AÇÃO 01 / PDCA 07) ─────
+
+const MONTHS_PT = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho",
+  "Julho","Agosto","Setembro","Outubro","Novembro","Dezembro",
+  "Mensal","Semanal","Trimestral","Semestral","Anual","Bimestral"];
+
+const RESP_KEYWORDS = ["Diretoria","SGQ","Comercial","PCP","Qualidade","RH",
+  "TI","Financeiro","Engenharia","Produção","Logística","Operações"];
+
+function parseTabelaMestreFormat(text: string, filename: string): RawRow[] {
+  const norm = text.replace(/\s+/g, " ").trim();
+
+  const pdcaNumMatch = norm.match(/PDCA\s*(\d+)\s*[–\-]/i)
+    ?? filename.match(/PDCA[\s_-]*0*(\d+)/i);
+  const pdcaNum = pdcaNumMatch ? pdcaNumMatch[1].padStart(2, "0") : "01";
+  const codPdca = `PDCA${pdcaNum}`;
+
+  // Collect AÇÃO titles (stop before "ID SUB" header or next column data)
+  const acaoTitles = new Map<string, string>();
+  const acaoRe = /AÇÃO\s*(\d{1,2})\s*[–\-]\s*(.+?)(?=\s+ID\s|\s+A\d{2}\s|\s{2,}|$)/g;
+  let am: RegExpExecArray | null;
+  while ((am = acaoRe.exec(norm)) !== null) {
+    acaoTitles.set(am[1].padStart(2, "0"), am[2].trim());
+  }
+
+  // Split on sub-action markers: A01 01.01
+  const subRe = /A(\d{2})\s+(\d{2}\.\d{2})([\s\S]*?)(?=A\d{2}\s+\d{2}\.\d{2}|AÇÃO\s*\d|$)/g;
+  const rows: RawRow[] = [];
+  let sub: RegExpExecArray | null;
+
+  while ((sub = subRe.exec(norm)) !== null) {
+    const actionNum = sub[1];
+    const subNum    = sub[2];
+    const block     = sub[3].replace(/\s+/g, " ").trim();
+
+    // Use the month as an anchor to split block into: [steps zone] [RESP] [PRAZO] [EVIDÊNCIA]
+    // No \b — accented chars like "Março" have non-ASCII chars that confuse ASCII word boundaries
+    const monthPat = new RegExp(`(${MONTHS_PT.join("|")})`, "i");
+    const prazoM   = block.match(monthPat);
+    const prazo    = prazoM?.[1] ?? "";
+    const prazoIdx = prazoM ? prazoM.index! : block.length;
+
+    // Text before month: description + steps + responsavel
+    const beforeMonth = block.slice(0, prazoIdx).trim();
+    // Text after month: evidência
+    const afterMonth  = block.slice(prazoIdx + (prazo.length || 0)).trim();
+
+    // Responsável: last keyword match in beforeMonth
+    const respPat = new RegExp(`(${RESP_KEYWORDS.join("|")})(?:\\s*\\+\\s*(?:${RESP_KEYWORDS.join("|")}))?`, "gi");
+    let respM: RegExpExecArray | null;
+    let lastResp = "";
+    while ((respM = respPat.exec(beforeMonth)) !== null) lastResp = respM[0];
+    const responsavel = lastResp.replace(/\s+/g, " ").trim();
+
+    // Steps zone: text before the responsavel keyword (or before month if no resp)
+    const respIdx = responsavel ? beforeMonth.lastIndexOf(responsavel) : beforeMonth.length;
+    const stepsZone = beforeMonth.slice(0, respIdx).trim();
+
+    // Description: text before first numbered step in stepsZone
+    const firstStepIdx = stepsZone.search(/\b1\.\s+/);
+    const descricaoRaw = firstStepIdx >= 0 ? stepsZone.slice(0, firstStepIdx) : stepsZone.slice(0, 80);
+    const descricao = descricaoRaw.replace(/\s+/g, " ").trim().slice(0, 140) || `Subação ${actionNum}.${subNum}`;
+
+    // Steps: numbered items from stepsZone
+    const fromStep = firstStepIdx >= 0 ? stepsZone.slice(firstStepIdx) : "";
+    const items: string[] = [];
+    const stepRe = /\b\d+\.\s+(.+?)(?=\s+\d+\.\s+|$)/g;
+    let nm: RegExpExecArray | null;
+    while ((nm = stepRe.exec(fromStep)) !== null) items.push(nm[1].trim().replace(/\s+/g, " "));
+    const comoFazer = items.map((it, i) => `${i + 1}. ${it}`).join("\n");
+
+    // Evidência: first meaningful word after month
+    const evidM = afterMonth.match(/^([A-ZÁÀÂÃÉÈÍÓÔÕÚÇa-záàâãéèíóôõúç][^\s]{2,30})/);
+    const evidencia = evidM?.[1] ?? "";
+
+    rows.push({
+      id:         `${codPdca}-A${actionNum}-${subNum}`,
+      codPdca,
+      phase:      "do" as PdcaPhase,
+      acao:       acaoTitles.get(actionNum) ?? `Ação ${actionNum}`,
+      subacao:    descricao,
+      responsavel,
+      comoFazer,
+      evidencias: evidencia,
+      indicador:  "",
+      meta:       prazo,
+      resultado:  "",
+      status:     "Pendente",
+      dataFim:    prazo,
+    });
+  }
+
+  return rows;
+}
+
 // ── Diagnostic preview (when no parseable rows found) ────────────────────────
 
 function buildPreview(text: string, filename: string) {
@@ -232,11 +349,14 @@ export async function POST(req: NextRequest) {
     }
 
     const text = await extractPdfText(buf);
-    const rows = parseRows(text);
+
+    // Try pipe-format parser first, then TABELA_MESTRE format
+    let rows = parseRows(text);
+    if (rows.length === 0) rows = parseTabelaMestreFormat(text, file.name);
 
     if (rows.length > 0) {
       const record = buildRecord(rows, file.name);
-      return NextResponse.json({ ok: true, pdca: record, rowCount: rows.length, text: text.slice(0, 500) });
+      return NextResponse.json({ ok: true, pdca: record, rowCount: rows.length });
     }
 
     // Could not extract structured rows — return diagnostic info
@@ -247,7 +367,7 @@ export async function POST(req: NextRequest) {
       preview,
       rowCount: 0,
       message: text.length > 100
-        ? "Texto extraído do PDF, mas nenhuma linha TABELA MESTRE encontrada. O PDF pode estar em formato diferente."
+        ? "Texto extraído do PDF, mas formato não reconhecido. Verifique se o PDF vem de um arquivo Word/Excel."
         : "Não foi possível extrair texto do PDF. O arquivo pode ser uma imagem escaneada (sem camada de texto).",
       suggestion: "Converta o PDF para DOCX e importe pela opção 'Importar Excel / DOCX'.",
     }, { status: 422 });

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useCallback } from "react";
-import { Upload, FileSpreadsheet, CheckCircle, XCircle, AlertTriangle, ChevronRight, RefreshCw, Save, X, Layers3, ListChecks, Clock, Gauge, Info, Database, ArrowRight } from "lucide-react";
+import { Upload, FileSpreadsheet, FileText, CheckCircle, XCircle, AlertTriangle, RefreshCw, Save, X, Layers3, ListChecks, Clock, Gauge, ArrowRight } from "lucide-react";
 import * as XLSX from "xlsx";
 import { PdcaRecord, PdcaPhase } from "@/lib/types";
 import { T } from "@/lib/tokens";
@@ -43,6 +43,16 @@ type FileResult = {
   errors: string[];
   status: "pending" | "parsing" | "ok" | "error";
 };
+
+type PdfResult = {
+  file: File;
+  pdca: PdcaRecord | null;
+  rowCount: number;
+  error: string;
+  status: "pending" | "processing" | "ok" | "error";
+};
+
+type ImportMode = "excel" | "pdf";
 
 const faseLabels: Record<PdcaPhase, string> = {
   plan: "PLAN",
@@ -259,15 +269,18 @@ function convertToPdcaRecords(rows: ParsedRow[]): PdcaRecord[] {
 }
 
 export function ImportView({ onRefresh, onImport, onDataImported }: ImportViewProps) {
+  const [importMode, setImportMode] = useState<ImportMode>("excel");
   const [currentStep, setCurrentStep] = useState<Step>("upload");
   const [file, setFile] = useState<File | null>(null);
   const [fileResults, setFileResults] = useState<FileResult[]>([]);
   const [parsedRows, setParsedRows] = useState<ParsedRow[]>([]);
+  const [pdfResults, setPdfResults] = useState<PdfResult[]>([]);
   const [errors, setErrors] = useState<string[]>([]);
   const [warnings, setWarnings] = useState<string[]>([]);
   const [importing, setImporting] = useState(false);
   const [success, setSuccess] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const pdfInputRef = useRef<HTMLInputElement>(null);
 
   const handleMultipleFiles = useCallback(async (selectedFiles: File[]) => {
     setFile(selectedFiles[0] ?? null);
@@ -330,12 +343,14 @@ export function ImportView({ onRefresh, onImport, onDataImported }: ImportViewPr
 
   const handleImport = useCallback(async () => {
     if (parsedRows.length === 0) return;
-    
+
     setImporting(true);
     setCurrentStep("sincronizacao");
 
     try {
       const pdcas = convertToPdcaRecords(parsedRows);
+      // Update local state immediately so the grid reflects the import even if server sync fails
+      onDataImported(pdcas);
       const response = await fetch("/api/pdcas", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -344,22 +359,76 @@ export function ImportView({ onRefresh, onImport, onDataImported }: ImportViewPr
 
       if (response.ok) {
         setSuccess(true);
-        onDataImported(pdcas);
         onRefresh();
       } else {
-        setErrors(["Erro ao sincronizar com o servidor"]);
+        setErrors(["Dados importados localmente. Sincronização com servidor falhou."]);
       }
     } catch (e) {
-      setErrors([`Erro: ${e}`]);
+      setErrors([`Dados importados localmente. Erro de rede: ${e}`]);
     } finally {
       setImporting(false);
     }
   }, [parsedRows, onDataImported, onRefresh]);
 
+  const handlePdfFiles = useCallback(async (selectedFiles: File[]) => {
+    setErrors([]);
+    setSuccess(false);
+    setCurrentStep("validacao");
+
+    const initial: PdfResult[] = selectedFiles.map(f => ({
+      file: f, pdca: null, rowCount: 0, error: "", status: "processing"
+    }));
+    setPdfResults(initial);
+
+    const updated = [...initial];
+    for (let i = 0; i < selectedFiles.length; i++) {
+      try {
+        const form = new FormData();
+        form.append("file", selectedFiles[i]);
+        const res = await fetch("/api/parse-pdf", { method: "POST", body: form });
+        const json = await res.json();
+        if (json.ok && json.pdca) {
+          updated[i] = { ...updated[i], pdca: json.pdca, rowCount: json.rowCount, status: "ok" };
+        } else {
+          updated[i] = { ...updated[i], error: json.message ?? "Erro ao processar", status: "error" };
+        }
+      } catch (e) {
+        updated[i] = { ...updated[i], error: `Erro: ${e}`, status: "error" };
+      }
+      setPdfResults([...updated]);
+    }
+
+    const validPdcas = updated.filter(r => r.status === "ok" && r.pdca).map(r => r.pdca!);
+    if (validPdcas.length > 0) setCurrentStep("previa");
+  }, []);
+
+  const handlePdfImport = useCallback(async () => {
+    const pdcas = pdfResults.filter(r => r.status === "ok" && r.pdca).map(r => r.pdca!);
+    if (pdcas.length === 0) return;
+    setImporting(true);
+    setCurrentStep("sincronizacao");
+    // Update local state immediately so comoFazer appears in the grid even if server sync fails
+    onDataImported(pdcas);
+    try {
+      const res = await fetch("/api/pdcas", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ pdcas }),
+      });
+      if (res.ok) { setSuccess(true); onRefresh(); }
+      else setErrors(["Dados importados localmente. Sincronização com servidor falhou."]);
+    } catch (e) {
+      setErrors([`Dados importados localmente. Erro de rede: ${e}`]);
+    } finally {
+      setImporting(false);
+    }
+  }, [pdfResults, onDataImported, onRefresh]);
+
   const reset = () => {
     setFile(null);
     setFileResults([]);
     setParsedRows([]);
+    setPdfResults([]);
     setErrors([]);
     setWarnings([]);
     setSuccess(false);
@@ -445,49 +514,75 @@ export function ImportView({ onRefresh, onImport, onDataImported }: ImportViewPr
       <div className="grid gap-5 lg:grid-cols-[1fr_320px]">
         {/* Main Content */}
         <div className="space-y-5">
-          {/* Upload Card com Neon Border */}
+          {/* Upload Card com seletor de modo */}
           {currentStep === "upload" && (
-            <div 
-              className="rounded-2xl border-2 border-dashed p-8 transition-all hover:scale-[1.01]"
-              style={{ 
-                borderColor: COLORS.neon, 
-                boxShadow: `0 0 30px ${COLORS.neonGlow}`,
-                backgroundColor: "rgba(0, 212, 255, 0.03)"
-              }}
-            >
+            <div className="rounded-2xl border border-[#1E7FD5]/25 bg-[#0E2539]/60 overflow-hidden">
+              {/* Tabs Excel / PDF */}
+              <div className="flex border-b border-[#1E7FD5]/20">
+                {(["excel", "pdf"] as ImportMode[]).map((mode) => (
+                  <button
+                    key={mode}
+                    onClick={() => setImportMode(mode)}
+                    className={`flex flex-1 items-center justify-center gap-2 px-4 py-3 text-sm font-semibold transition-all ${
+                      importMode === mode
+                        ? "bg-[#1E7FD5]/15 text-white border-b-2 border-[#1E7FD5]"
+                        : "text-slate-500 hover:text-slate-300 hover:bg-white/5"
+                    }`}
+                  >
+                    {mode === "excel"
+                      ? <><FileSpreadsheet className="h-4 w-4" />Excel (.xlsx/.xls)</>
+                      : <><FileText className="h-4 w-4" />PDF (.pdf)</>}
+                  </button>
+                ))}
+              </div>
+
+              {/* Drop zone */}
               <div
-                onDrop={handleDrop}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  const ext = importMode === "excel" ? [".xlsx", ".xls"] : [".pdf"];
+                  const files = Array.from(e.dataTransfer.files).filter(f =>
+                    ext.some(x => f.name.toLowerCase().endsWith(x))
+                  );
+                  if (files.length) {
+                    importMode === "excel" ? handleMultipleFiles(files) : handlePdfFiles(files);
+                  } else {
+                    setErrors([`Apenas arquivos ${ext.join(", ")} são aceitos`]);
+                  }
+                }}
                 onDragOver={(e) => e.preventDefault()}
-                className="flex flex-col items-center justify-center rounded-xl py-16"
+                className="flex flex-col items-center justify-center py-16 px-8 cursor-pointer"
+                onClick={() => importMode === "excel" ? fileInputRef.current?.click() : pdfInputRef.current?.click()}
               >
-                <div className="rounded-full p-4 mb-4" style={{ backgroundColor: "rgba(0, 212, 255, 0.1)" }}>
-                  <FileSpreadsheet className="h-12 w-12" style={{ color: COLORS.neon }} />
+                <div className="rounded-full p-4 mb-4 bg-[#1E7FD5]/10">
+                  {importMode === "excel"
+                    ? <FileSpreadsheet className="h-12 w-12 text-[#1E7FD5]" />
+                    : <FileText className="h-12 w-12 text-[#82C4F8]" />}
                 </div>
-                <p className="text-lg font-medium" style={{ color: COLORS.white }}>Arraste os arquivos Excel aqui</p>
-                <p className="text-sm mt-1" style={{ color: COLORS.gray }}>ou clique para selecionar (múltiplos permitidos)</p>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept=".xlsx,.xls"
-                  multiple
-                  hidden
-                  onChange={(e) => {
-                    const files = Array.from(e.target.files ?? []);
-                    if (files.length) handleMultipleFiles(files);
-                    e.target.value = "";
-                  }}
-                />
+                <p className="text-lg font-semibold text-white">
+                  {importMode === "excel" ? "Arraste os arquivos Excel aqui" : "Arraste os PDFs de subações aqui"}
+                </p>
+                <p className="text-sm mt-1 text-slate-400">
+                  {importMode === "excel"
+                    ? "TABELA_MESTRE.xlsx — múltiplos arquivos permitidos"
+                    : "TABELA_MESTRE_PDCA_XX.pdf — múltiplos PDFs permitidos"}
+                </p>
+
+                {/* Hidden inputs */}
+                <input ref={fileInputRef} type="file" accept=".xlsx,.xls" multiple hidden
+                  onChange={(e) => { const f = Array.from(e.target.files ?? []); if (f.length) handleMultipleFiles(f); e.target.value = ""; }} />
+                <input ref={pdfInputRef} type="file" accept=".pdf" multiple hidden
+                  onChange={(e) => { const f = Array.from(e.target.files ?? []); if (f.length) handlePdfFiles(f); e.target.value = ""; }} />
+
                 <button
-                  onClick={() => fileInputRef.current?.click()}
-                  className="mt-6 rounded-lg px-6 py-2 text-sm font-medium text-white transition-all hover:scale-105"
-                  style={{
-                    background: `linear-gradient(135deg, ${COLORS.neon}, ${COLORS.neonSecondary})`,
-                    boxShadow: `0 0 20px ${COLORS.neonGlow}`
-                  }}
+                  onClick={(ev) => { ev.stopPropagation(); importMode === "excel" ? fileInputRef.current?.click() : pdfInputRef.current?.click(); }}
+                  className="mt-6 rounded-xl px-6 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-[#1E7FD5] to-[#0066B3] shadow-[0_0_18px_rgba(30,127,213,0.35)] transition-all hover:from-[#82C4F8] hover:to-[#1E7FD5]"
                 >
-                  Selecionar arquivos Excel
+                  {importMode === "excel" ? "Selecionar Excel" : "Selecionar PDFs"}
                 </button>
-                <p className="mt-4 text-xs" style={{ color: COLORS.gray }}>Aceitos: .xlsx, .xls — selecione 1 ou mais arquivos</p>
+                <p className="mt-3 text-xs text-slate-600">
+                  {importMode === "excel" ? "Aceitos: .xlsx, .xls" : "Aceito: .pdf — gerado a partir de Word/Excel"}
+                </p>
               </div>
             </div>
           )}
@@ -538,8 +633,104 @@ export function ImportView({ onRefresh, onImport, onDataImported }: ImportViewPr
             </div>
           )}
 
-          {/* Preview Table */}
-          {(currentStep === "previa" || currentStep === "mapeamento") && parsedRows.length > 0 && (
+          {/* PDF Processing Status */}
+          {importMode === "pdf" && currentStep === "validacao" && pdfResults.length > 0 && (
+            <div className="rounded-2xl border border-[#1E7FD5]/25 bg-[#0E2539]/60 p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-base font-semibold text-white">
+                  Processando {pdfResults.length} PDF{pdfResults.length > 1 ? "s" : ""}...
+                </h3>
+                <button onClick={reset} className="text-sm text-[#82C4F8] hover:underline">Cancelar</button>
+              </div>
+              <div className="space-y-3">
+                {pdfResults.map((pr, i) => (
+                  <div key={i} className="flex items-start gap-3 rounded-xl border border-[#1E7FD5]/15 bg-[#08192E]/50 p-3">
+                    <div className="mt-0.5 shrink-0">
+                      {pr.status === "processing" && <RefreshCw className="h-5 w-5 animate-spin text-[#1E7FD5]" />}
+                      {pr.status === "ok"         && <CheckCircle className="h-5 w-5 text-emerald-400" />}
+                      {pr.status === "error"      && <XCircle    className="h-5 w-5 text-rose-400" />}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-white truncate">{pr.file.name}</p>
+                      {pr.status === "processing" && <p className="text-xs text-slate-500 mt-0.5">Extraindo subações...</p>}
+                      {pr.status === "ok"         && <p className="text-xs text-emerald-400 mt-0.5">{pr.rowCount} subações extraídas</p>}
+                      {pr.status === "error"      && <p className="text-xs text-rose-400 mt-0.5">{pr.error}</p>}
+                    </div>
+                    <span className="text-xs text-slate-500 shrink-0">{(pr.file.size / 1024).toFixed(0)} KB</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* PDF Preview */}
+          {importMode === "pdf" && (currentStep === "previa" || currentStep === "mapeamento") &&
+            pdfResults.some(r => r.status === "ok") && (
+            <div className="rounded-2xl border border-[#1E7FD5]/20 bg-[#0E2539]/60 overflow-hidden">
+              <div className="border-b border-[#1E7FD5]/20 px-6 py-4 flex items-center justify-between">
+                <div>
+                  <h3 className="text-base font-semibold text-white">Prévia das Subações Extraídas</h3>
+                  <p className="text-sm text-slate-400">
+                    {pdfResults.filter(r => r.status === "ok").reduce((s, r) => s + r.rowCount, 0)} subações em{" "}
+                    {pdfResults.filter(r => r.status === "ok").length} PDF{pdfResults.filter(r => r.status === "ok").length > 1 ? "s" : ""}
+                  </p>
+                </div>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="bg-[#1E7FD5]/8">
+                      {["PDCA","Ação","Subação","Responsável","Prazo","Como Fazer"].map(h => (
+                        <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-[#82C4F8] uppercase tracking-wider">{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {pdfResults.filter(r => r.status === "ok" && r.pdca).flatMap(r =>
+                      Object.values(r.pdca!.fases).flat().flatMap(action =>
+                        action.subacoes.map(sub => ({
+                          pdca: r.pdca!.id,
+                          acao: action.acao.slice(0, 40),
+                          subacao: sub.nome.slice(0, 60),
+                          responsavel: sub.resp,
+                          prazo: sub.meta ?? sub.prazo ?? "",
+                          comoFazer: sub.comoFazer ? sub.comoFazer.slice(0, 60) + (sub.comoFazer.length > 60 ? "…" : "") : "—",
+                        }))
+                      )
+                    ).slice(0, 12).map((row, i) => (
+                      <tr key={i} className="border-b border-[#1E7FD5]/10 hover:bg-[#1E7FD5]/5 transition-colors">
+                        <td className="px-4 py-2.5 font-semibold text-white">{row.pdca}</td>
+                        <td className="px-4 py-2.5 text-slate-400 max-w-[160px] truncate">{row.acao}</td>
+                        <td className="px-4 py-2.5 text-slate-300 max-w-[180px] truncate">{row.subacao}</td>
+                        <td className="px-4 py-2.5 text-slate-400">{row.responsavel || "—"}</td>
+                        <td className="px-4 py-2.5 text-slate-400">{row.prazo || "—"}</td>
+                        <td className="px-4 py-2.5 text-slate-500 text-xs max-w-[200px] truncate">{row.comoFazer}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* PDF Import buttons */}
+          {importMode === "pdf" && (currentStep === "previa" || currentStep === "mapeamento") &&
+            pdfResults.some(r => r.status === "ok") && (
+            <div className="flex items-center justify-between rounded-xl border border-[#1E7FD5]/20 bg-[#0E2539]/60 p-4">
+              <button onClick={reset}
+                className="flex items-center gap-2 rounded-xl border border-[#1E7FD5]/30 px-4 py-2 text-sm font-medium text-[#82C4F8] hover:bg-[#1E7FD5]/10 transition-all">
+                <X className="h-4 w-4" /> Cancelar
+              </button>
+              <button onClick={handlePdfImport} disabled={importing}
+                className="flex items-center gap-2 rounded-xl px-6 py-2 text-sm font-semibold text-white bg-gradient-to-r from-[#1E7FD5] to-[#0066B3] shadow-[0_0_18px_rgba(30,127,213,0.3)] transition-all hover:from-[#82C4F8] hover:to-[#1E7FD5] disabled:opacity-50">
+                <Save className="h-4 w-4" />
+                {importing ? "Importando..." : `Importar ${pdfResults.filter(r => r.status === "ok").reduce((s, r) => s + r.rowCount, 0)} subações`}
+              </button>
+            </div>
+          )}
+
+          {/* Preview Table (Excel) */}
+          {importMode === "excel" && (currentStep === "previa" || currentStep === "mapeamento") && parsedRows.length > 0 && (
             <div className="rounded-2xl border border-cyan-500/20 bg-cyan-950/10 overflow-hidden">
               <div className="border-b border-cyan-500/20 px-6 py-4 flex items-center justify-between">
                 <div>
@@ -589,8 +780,8 @@ export function ImportView({ onRefresh, onImport, onDataImported }: ImportViewPr
             </div>
           )}
 
-          {/* Sync Buttons */}
-          {(currentStep === "previa" || currentStep === "mapeamento") && (
+          {/* Sync Buttons (Excel only) */}
+          {importMode === "excel" && (currentStep === "previa" || currentStep === "mapeamento") && (
             <div className="flex items-center justify-between rounded-xl border border-cyan-500/20 bg-cyan-950/10 p-4">
               <button
                 onClick={reset}
@@ -628,7 +819,11 @@ export function ImportView({ onRefresh, onImport, onDataImported }: ImportViewPr
                 <CheckCircle className="h-6 w-6" style={{ color: COLORS.success }} />
                 <div>
                   <h3 className="text-lg font-semibold" style={{ color: COLORS.white }}>Importação concluída!</h3>
-                  <p className="text-sm" style={{ color: COLORS.gray }}>{parsedRows.length} registros sincronizados com sucesso.</p>
+                  <p className="text-sm" style={{ color: COLORS.gray }}>
+                    {importMode === "pdf"
+                      ? `${pdfResults.filter(r => r.status === "ok").reduce((s, r) => s + r.rowCount, 0)} subações sincronizadas com sucesso.`
+                      : `${parsedRows.length} registros sincronizados com sucesso.`}
+                  </p>
                 </div>
               </div>
             </div>
