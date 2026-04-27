@@ -217,42 +217,87 @@ export function PersistenciaView({ pdcas, selectedPdcaId, onSelectPdca, onRefres
         {/* Detail Panel */}
         <div className="space-y-4">
           <div className="rounded-xl border p-5" style={{ borderColor: T.border, backgroundColor: T.surface }}>
-            <h3 className="text-lg font-semibold mb-4" style={{ color: COLORS.white }}>Detalhes do PDCA</h3>
-            {selectedPdca ? (
-              <div className="space-y-4">
-                <div>
-                  <p className="text-xs font-medium uppercase tracking-wider" style={{ color: COLORS.neon }}>Código</p>
-                  <p className="text-xl font-bold" style={{ color: COLORS.white }}>{selectedPdca.id}</p>
-                </div>
-                <div>
-                  <p className="text-xs font-medium uppercase tracking-wider" style={{ color: COLORS.neon }}>Título</p>
-                  <p className="text-sm" style={{ color: COLORS.white }}>{selectedPdca.titulo}</p>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-xs font-medium uppercase tracking-wider" style={{ color: COLORS.neon }}>Responsável</p>
-                    <div className="flex items-center gap-2 mt-1">
-                      <User className="h-4 w-4" style={{ color: COLORS.gray }} />
-                      <span className="text-sm" style={{ color: COLORS.white }}>{selectedPdca.area || "-"}</span>
+            <h3 className="text-base font-semibold mb-4" style={{ color: COLORS.white }}>Detalhes do PDCA</h3>
+            {selectedPdca ? (() => {
+              // Progress: count subactions, fall back to numeric situacao for demo data
+              const allSubs = Object.values(selectedPdca.fases).flat().flatMap(a => a.subacoes);
+              const total = allSubs.length;
+              const concluded = allSubs.filter(s => s.status?.toLowerCase().includes("conclu")).length;
+              const situacaoNum = parseInt(selectedPdca.situacao ?? "");
+              const progress = total > 0
+                ? Math.round((concluded / total) * 100)
+                : (Number.isFinite(situacaoNum) ? situacaoNum : 0);
+              // Description: situacao only if it's not a number/status keyword
+              const isNumericOrStatus = /^\d+$/.test(selectedPdca.situacao ?? "") ||
+                ["Pendente","Em Execução","Concluído","Importado"].some(k => (selectedPdca.situacao ?? "").startsWith(k));
+              const descText = [
+                !isNumericOrStatus ? selectedPdca.situacao : "",
+                selectedPdca.causas,
+              ].filter(Boolean).join("\n\n");
+
+              return (
+                <div className="space-y-4">
+                  {/* Código + Título */}
+                  <div className="flex items-start gap-3">
+                    <div className="shrink-0">
+                      <p className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: COLORS.neon }}>Código</p>
+                      <p className="text-2xl font-bold font-mono" style={{ color: COLORS.neon }}>{selectedPdca.id}</p>
+                    </div>
+                    <div className="flex-1 min-w-0 border-l pl-3" style={{ borderColor: T.border }}>
+                      <p className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: COLORS.neon }}>Título</p>
+                      <p className="text-sm leading-snug" style={{ color: COLORS.white }}>{selectedPdca.titulo || "-"}</p>
                     </div>
                   </div>
+
+                  {/* Responsável + Status */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <p className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: COLORS.neon }}>Responsável</p>
+                      <div className="flex items-center gap-1.5 mt-1">
+                        <User className="h-3.5 w-3.5 shrink-0" style={{ color: COLORS.gray }} />
+                        <span className="text-xs truncate" style={{ color: COLORS.white }}>{selectedPdca.area || "-"}</span>
+                      </div>
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: COLORS.neon }}>Status</p>
+                      <span className="mt-1 inline-flex rounded-full px-2 py-0.5 text-xs font-medium bg-blue-500/15 text-blue-300">
+                        {selectedPdca.status || "Pendente"}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Progresso */}
+                  <div className="rounded-lg p-3" style={{ backgroundColor: T.bg }}>
+                    <div className="flex items-center justify-between mb-2">
+                      <p className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: COLORS.neon }}>Progresso</p>
+                      <span className="text-sm font-bold tabular-nums" style={{ color: COLORS.white }}>{progress}%</span>
+                    </div>
+                    <div className="h-2 overflow-hidden rounded-full" style={{ backgroundColor: "#1a2744" }}>
+                      <div
+                        className="h-full rounded-full bg-gradient-to-r from-[#1E7FD5] to-[#0066B3] transition-all"
+                        style={{ width: `${progress}%` }}
+                      />
+                    </div>
+                    <p className="text-[10px] mt-1.5" style={{ color: COLORS.gray }}>
+                      {concluded} de {total} subações concluídas
+                    </p>
+                  </div>
+
+                  {/* Descrição / Contexto */}
                   <div>
-                    <p className="text-xs font-medium uppercase tracking-wider" style={{ color: COLORS.neon }}>Progresso</p>
-                    <p className="text-lg font-bold" style={{ color: COLORS.neon }}>{selectedPdca.situacao || 0}%</p>
+                    <p className="text-[10px] font-semibold uppercase tracking-widest mb-1.5" style={{ color: COLORS.neon }}>
+                      Descrição / Contexto
+                    </p>
+                    <div
+                      className="rounded-lg p-3 max-h-36 overflow-y-auto text-xs leading-relaxed whitespace-pre-wrap"
+                      style={{ backgroundColor: T.bg, color: COLORS.gray }}
+                    >
+                      {descText || "Nenhuma descrição disponível."}
+                    </div>
                   </div>
                 </div>
-                <div>
-                  <p className="text-xs font-medium uppercase tracking-wider" style={{ color: COLORS.neon }}>Status</p>
-                  <span className="inline-flex mt-1 rounded-full px-3 py-1 text-sm font-medium bg-blue-500/15 text-blue-300">
-                    {selectedPdca.status || "Pendente"}
-                  </span>
-                </div>
-                <div>
-                  <p className="text-xs font-medium uppercase tracking-wider" style={{ color: COLORS.neon }}>Descrição</p>
-                  <p className="text-sm mt-1" style={{ color: COLORS.gray }}>{selectedPdca.causas || "Nenhuma descrição disponível"}</p>
-                </div>
-              </div>
-            ) : (
+              );
+            })() : (
               <div className="flex flex-col items-center justify-center py-8">
                 <FileText className="h-12 w-12 mb-3" style={{ color: COLORS.gray }} />
                 <p className="text-sm" style={{ color: COLORS.gray }}>Selecione um PDCA para ver detalhes</p>
