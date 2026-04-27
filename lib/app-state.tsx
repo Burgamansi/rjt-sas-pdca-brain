@@ -194,10 +194,11 @@ export function useFilteredData() {
 
     const completion = total > 0 ? Math.round((done / total) * 100) : 0;
 
-    // Regra: apenas PDCAs importados via arquivo Excel
-    const excelPdcaCount = filteredPdcas.filter(
-      (p) => p.fonteArquivo === "Excel Import"
-    ).length;
+    // Regra: apenas PDCAs Excel — via ImportView ("Excel Import") ou TopBar (.xlsx/.xls)
+    const excelPdcaCount = filteredPdcas.filter((p) => {
+      const f = p.fonteArquivo ?? "";
+      return f === "Excel Import" || /\.(xlsx|xls)$/i.test(f);
+    }).length;
 
     return {
       pdcaCount: filteredPdcas.length,
