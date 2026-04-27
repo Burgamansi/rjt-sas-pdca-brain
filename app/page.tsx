@@ -272,7 +272,7 @@ export default function Page() {
   return (
     <div className="min-h-screen bg-[#08192E] text-slate-100">
       <Sidebar
-        pdcaCount={stats.pdcaCount}
+        pdcaCount={stats.excelPdcaCount}
         subactionCount={stats.subactionCount}
         doneCount={stats.done}
         completion={stats.completion}

@@ -67,14 +67,19 @@ export function PortfolioView({ pdcas, selectedPdcaId, onSelectPdca, onRefresh, 
   const [phaseFilter, setPhaseFilter] = useState<PdcaPhase | "all">("all");
 
   const stats = useMemo(() => {
-    const ativo = pdcas.length;
-    const concluido = pdcas.filter((p) => getPdcaProgress(p) >= 90).length;
-    const emAndamento = pdcas.filter((p) => getPdcaStatus(p) === "em-andamento").length;
-    const atrasado = pdcas.filter((p) => {
+    const isExcel = (p: PdcaRecord) => {
+      const f = p.fonteArquivo ?? "";
+      return f === "Excel Import" || /\.(xlsx|xls)$/i.test(f);
+    };
+    const excelPdcas = pdcas.filter(isExcel);
+    const ativo = excelPdcas.length;
+    const concluido = excelPdcas.filter((p) => getPdcaProgress(p) >= 90).length;
+    const emAndamento = excelPdcas.filter((p) => getPdcaStatus(p) === "em-andamento").length;
+    const atrasado = excelPdcas.filter((p) => {
       const all = getAllSubacoes(p);
       return all.some((s) => (s.status ?? "").toLowerCase().includes("atras"));
     }).length;
-    const efetividade = ativo > 0 ? Math.round(pdcas.reduce((acc, p) => acc + getPdcaProgress(p), 0) / ativo) : 0;
+    const efetividade = ativo > 0 ? Math.round(excelPdcas.reduce((acc, p) => acc + getPdcaProgress(p), 0) / ativo) : 0;
     const totalSubacoes = pdcas.reduce((acc, p) => acc + getAllSubacoes(p).length, 0);
     return { ativo, concluido, emAndamento, atrasado, efetividade, totalSubacoes };
   }, [pdcas]);
