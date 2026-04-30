@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { analisarDocumentoUniaoBag } from "@/lib/uniao-bag-parser";
 import { inflateRaw } from "node:zlib";
 import { promisify } from "node:util";
 import type { PdcaAction, PdcaPhase, PdcaRecord, PdcaSubaction } from "@/lib/types";
@@ -353,6 +354,27 @@ export async function POST(req: NextRequest) {
     // Try pipe-format parser first, then TABELA_MESTRE format
     let rows = parseRows(text);
     if (rows.length === 0) rows = parseTabelaMestreFormat(text, file.name);
+
+    if (rows.length === 0) {
+      const tarefasUniao = analisarDocumentoUniaoBag(text);
+      if (tarefasUniao.length > 0) {
+        rows = tarefasUniao.map((t, idx) => ({
+          id: `UB-A01-${(idx + 1).toString().padStart(2, "0")}`,
+          codPdca: "PDCA-UB",
+          phase: "do",
+          acao: "Ações União Bag",
+          subacao: t.titulo,
+          responsavel: t.responsavel,
+          comoFazer: "",
+          evidencias: "",
+          indicador: "",
+          meta: "",
+          resultado: "",
+          status: t.status || "Pendente",
+          dataFim: "",
+        }));
+      }
+    }
 
     if (rows.length > 0) {
       const record = buildRecord(rows, file.name);

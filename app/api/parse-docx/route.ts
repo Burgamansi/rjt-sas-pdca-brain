@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { analisarDocumentoUniaoBag } from "@/lib/uniao-bag-parser";
 import { inflateRaw } from "node:zlib";
 import { promisify } from "node:util";
 
@@ -160,7 +161,27 @@ export async function POST(req: NextRequest) {
 
     const buf = Buffer.from(await file.arrayBuffer());
     const xml = await extractDocumentXml(buf);
-    const { titulo, acoes } = parseDocument(xml);
+    let { titulo, acoes } = parseDocument(xml);
+
+    if (acoes.length === 0) {
+      const plainText = extractBlocks(xml).map(b => b.type === "para" ? b.text : b.rows.map(r => r.join(" | ")).join("\n")).join("\n");
+      const tarefasUniao = analisarDocumentoUniaoBag(plainText);
+      
+      if (tarefasUniao.length > 0) {
+        titulo = titulo || file.name.replace(/\.docx$/i, "");
+        acoes = [{
+          titulo: "Ações União Bag",
+          subacoes: tarefasUniao.map(t => ({
+            subacao: t.titulo,
+            como_fazer: "",
+            responsavel: t.responsavel,
+            prazo: "",
+            evidencia: "",
+            status: t.status || "Pendente"
+          }))
+        }];
+      }
+    }
 
     const totalSubacoes = acoes.reduce((s, a) => s + a.subacoes.length, 0);
     if (acoes.length === 0) {
