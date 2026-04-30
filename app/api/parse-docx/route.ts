@@ -1,17 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { inflateRaw } from "node:zlib";
 import { promisify } from "node:util";
-import type { PdcaAction, PdcaPhase, PdcaRecord, PdcaSubaction } from "@/lib/types";
 
 const inflate = promisify(inflateRaw);
 
-// ── Minimal ZIP reader (no external deps) ───────────────────────────────────
+// ── ZIP reader ───────────────────────────────────────────────────────────────
 
 function r16(buf: Buffer, at: number) { return buf.readUInt16LE(at); }
 function r32(buf: Buffer, at: number) { return buf.readUInt32LE(at); }
 
 async function extractDocumentXml(buf: Buffer): Promise<string> {
-  const target = "word/document.xml";
   let i = 0;
   while (i < buf.length - 30) {
     if (r32(buf, i) !== 0x04034b50) { i++; continue; }
@@ -21,194 +19,167 @@ async function extractDocumentXml(buf: Buffer): Promise<string> {
     const exLen  = r16(buf, i + 28);
     const name   = buf.slice(i + 30, i + 30 + fnLen).toString("utf8");
     const start  = i + 30 + fnLen + exLen;
-    if (name === target) {
+    if (name === "word/document.xml") {
       const chunk = buf.slice(start, start + cSize);
       if (method === 0) return chunk.toString("utf8");
       if (method === 8) return (await inflate(chunk)).toString("utf8");
-      throw new Error(`Compressão ZIP não suportada (método ${method})`);
+      throw new Error(`Unsupported ZIP method: ${method}`);
     }
     i = start + cSize;
   }
-  throw new Error("word/document.xml não encontrado no arquivo DOCX.");
+  throw new Error("word/document.xml not found.");
 }
 
-function xmlToText(xml: string): string {
+// ── XML helpers ──────────────────────────────────────────────────────────────
+
+function nodeText(xml: string): string {
   return xml.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
 }
 
-// ── Status normalization ────────────────────────────────────────────────────
+type Block =
+  | { type: "para"; text: string; xml: string }
+  | { type: "table"; rows: string[][] };
 
-function normalizeStatus(raw: string): string {
-  const v = raw.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-  if (v === "ok" || v.includes("conclu") || v.includes("finaliz")) return "Concluído";
-  if (v === "alerta" || v.includes("execu") || v.includes("andamento")) return "Em Andamento";
-  if (v === "critico" || v.includes("atras")) return "Atrasado";
-  if (v.includes("pend")) return "Pendente";
-  return raw || "Pendente";
-}
-
-function phaseLabel(p: PdcaPhase): PdcaAction["etapa"] {
-  if (p === "plan") return "PLAN";
-  if (p === "do") return "DO";
-  if (p === "check") return "CHECK";
-  return "ACT";
-}
-
-// ── Row parser ──────────────────────────────────────────────────────────────
-
-type RawRow = {
-  id: string;
-  codPdca: string;
-  phase: PdcaPhase;
-  acao: string;
-  subacao: string;
-  responsavel: string;
-  comoFazer: string;
-  evidencias: string;
-  indicador: string;
-  meta: string;
-  resultado: string;
-  status: string;
-  dataFim: string;
-};
-
-function parseRows(text: string): RawRow[] {
-  // Prefer the machine-readable "COMPLETA PARA IMPORTAÇÃO" section
-  const anchor = text.indexOf("COMPLETA PARA IMPORTA");
-  const src = anchor >= 0 ? text.slice(anchor) : text;
-
-  // Collect positions of all PDCA ID matches (e.g. PDCA01-01.01)
-  const idRe = /PDCA\d{2}-\d{2}\.\d{2}/g;
-  const positions: Array<{ index: number }> = [];
+function extractBlocks(xml: string): Block[] {
+  const blocks: Block[] = [];
+  // Match top-level <w:p> and <w:tbl> nodes in document order
+  const re = /(<w:p[\s>][\s\S]*?<\/w:p>|<w:tbl[\s>][\s\S]*?<\/w:tbl>)/g;
   let m: RegExpExecArray | null;
-  while ((m = idRe.exec(src)) !== null) positions.push({ index: m.index });
-
-  const rows: RawRow[] = [];
-  const seen = new Set<string>();
-
-  for (let j = 0; j < positions.length; j++) {
-    const start = positions[j].index;
-    const end   = positions[j + 1]?.index ?? Math.min(start + 900, src.length);
-    const chunk = src.slice(start, end).trim();
-    const parts = chunk.split("|").map((s) => s.trim());
-
-    // COMPLETA format: ID | PDCAXX | ETAPA | ACAO | SUBACAO | ... (≥16 cols)
-    if (parts.length < 16 || !/^PDCA\d{2}$/.test(parts[1])) continue;
-
-    const id = parts[0];
-    if (seen.has(id)) continue;
-    seen.add(id);
-
-    const rawPhase = parts[2].toLowerCase();
-    const phase: PdcaPhase = (["plan", "do", "check", "act"].includes(rawPhase)
-      ? rawPhase
-      : "do") as PdcaPhase;
-
-    rows.push({
-      id,
-      codPdca: parts[1],
-      phase,
-      acao: parts[3] ?? "",
-      subacao: parts[4] ?? "",
-      responsavel: parts[7] ?? "",
-      comoFazer: parts[8] ?? "",
-      evidencias: parts[10] ?? "",
-      indicador: parts[11] ?? "",
-      meta: parts[12] ?? "",
-      resultado: parts[13] ?? "",
-      status: normalizeStatus(parts[14] ?? ""),
-      dataFim: parts[16] ?? parts[15] ?? "",
-    });
+  while ((m = re.exec(xml)) !== null) {
+    const raw = m[1];
+    if (raw.startsWith("<w:tbl")) {
+      const rows: string[][] = [];
+      const trRe = /<w:tr[\s>][\s\S]*?<\/w:tr>/g;
+      let tr: RegExpExecArray | null;
+      while ((tr = trRe.exec(raw)) !== null) {
+        const cells: string[] = [];
+        const tcRe = /<w:tc[\s>][\s\S]*?<\/w:tc>/g;
+        let tc: RegExpExecArray | null;
+        while ((tc = tcRe.exec(tr[0])) !== null) cells.push(nodeText(tc[0]));
+        if (cells.some(c => c.length > 0)) rows.push(cells);
+      }
+      if (rows.length > 0) blocks.push({ type: "table", rows });
+    } else {
+      const text = nodeText(raw);
+      if (text) blocks.push({ type: "para", text, xml: raw });
+    }
   }
-  return rows;
+  return blocks;
 }
 
-// ── Build PdcaRecord ────────────────────────────────────────────────────────
+// ── Subaction column mapping ─────────────────────────────────────────────────
 
-function buildRecord(rows: RawRow[], filename: string): PdcaRecord {
-  const codPdca = rows[0]?.codPdca ?? filename.replace(/[^a-z0-9]/gi, "").toUpperCase().slice(0, 7);
-  const fases: Record<PdcaPhase, PdcaAction[]> = { plan: [], do: [], check: [], act: [] };
+function n(s: string) {
+  return s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+}
 
-  const actionMap = new Map<string, PdcaAction>();
-  for (const row of rows) {
-    const key = `${row.phase}::${row.acao}`;
-    if (!actionMap.has(key)) {
-      const action: PdcaAction = {
-        id: `${codPdca}-${row.acao.slice(0, 24).replace(/\s+/g, "-")}`,
-        etapa: phaseLabel(row.phase),
-        acao: row.acao,
-        subacoes: [],
-      };
-      actionMap.set(key, action);
-      fases[row.phase].push(action);
+function mapSubactionCols(header: string[]): Record<string, number> {
+  const find = (...terms: string[]) => {
+    for (const t of terms) {
+      const i = header.findIndex(h => n(h).includes(t));
+      if (i !== -1) return i;
     }
-    const action = actionMap.get(key)!;
-    const sub: PdcaSubaction = {
-      id: row.id,
-      nome: row.subacao || row.acao,
-      resp: row.responsavel,
-      gut: 0,
-      indicador: row.indicador,
-      meta: row.meta,
-      resultado: row.resultado,
-      status: row.status,
-      ...(row.comoFazer  ? { comoFazer:    row.comoFazer  } : {}),
-      ...(row.dataFim    ? { prazo:         row.dataFim    } : {}),
-      ...(row.evidencias ? { evidenciaSgq:  row.evidencias } : {}),
-    };
-    action.subacoes.push(sub);
-  }
-
-  const allStatuses = rows.map((r) => r.status);
-  const overallStatus = allStatuses.every((s) => s.includes("Concluí"))
-    ? "Concluído"
-    : allStatuses.some((s) => s === "Em Andamento")
-    ? "Em Execução"
-    : "Pendente";
-
+    return -1;
+  };
   return {
-    id: codPdca,
-    titulo: filename.replace(/\.docx$/i, "").replace(/^📘\s*/, "").trim(),
-    area: "",
-    situacao: overallStatus,
-    causas: "",
-    analise_gut: { g: 0, u: 0, t: 0, total: 0 },
-    fases,
-    status: overallStatus,
-    fonteArquivo: filename,
-    atualizadoEm: new Date().toISOString(),
+    subacao:      find("subacao", "subação", "atividade", "o que", "what"),
+    como_fazer:   find("como", "how"),
+    responsavel:  find("resp", "responsavel"),
+    prazo:        find("prazo", "deadline", "data fim", "due"),
+    evidencia:    find("evidencia", "evidence", "evidenc"),
   };
 }
 
-// ── Route handler ───────────────────────────────────────────────────────────
+type Subacao = { subacao: string; como_fazer: string; responsavel: string; prazo: string; evidencia: string };
+
+function tableToSubacoes(rows: string[][]): Subacao[] {
+  if (rows.length < 2) return [];
+  const cols = mapSubactionCols(rows[0]);
+  const get = (row: string[], key: string) => {
+    const i = cols[key];
+    return i !== -1 ? (row[i] ?? "") : "";
+  };
+  return rows.slice(1).map(row => ({
+    subacao:     get(row, "subacao")     || row[0] || "",
+    como_fazer:  get(row, "como_fazer"),
+    responsavel: get(row, "responsavel"),
+    prazo:       get(row, "prazo"),
+    evidencia:   get(row, "evidencia"),
+  })).filter(s => s.subacao.trim().length > 0);
+}
+
+// ── Document parser ──────────────────────────────────────────────────────────
+
+const ACAO_RE  = /^[AÀÂ][CÇ][AÀÂ][OÕ]\s*0*(\d+)/i;
+const PDCA_RE  = /PDCA\s*0*(\d+)/i;
+const TITLE_RE = /(?:PDCA|PLANO|PLAN)\s*.{0,80}/i;
+
+function parseDocument(xml: string) {
+  const blocks = extractBlocks(xml);
+  let titulo = "";
+  const acoes: Array<{ titulo: string; subacoes: Subacao[] }> = [];
+  let currentAcao: { titulo: string; subacoes: Subacao[] } | null = null;
+
+  for (const block of blocks) {
+    if (block.type === "para") {
+      const { text } = block;
+
+      // Capture PDCA title from first heading or first PDCA-matching paragraph
+      if (!titulo && (PDCA_RE.test(text) || TITLE_RE.test(text))) {
+        titulo = text.slice(0, 120);
+        continue;
+      }
+
+      // Detect AÇÃO 01, AÇÃO 02, … headers
+      if (ACAO_RE.test(text)) {
+        currentAcao = { titulo: text.slice(0, 120), subacoes: [] };
+        acoes.push(currentAcao);
+      }
+    } else {
+      // Table — attach to current action if one is open
+      if (currentAcao) {
+        const subs = tableToSubacoes(block.rows);
+        if (subs.length > 0) currentAcao.subacoes.push(...subs);
+      }
+    }
+  }
+
+  return { titulo, acoes };
+}
+
+// ── Route handler ────────────────────────────────────────────────────────────
 
 export async function POST(req: NextRequest) {
   try {
     const form = await req.formData();
     const file = form.get("file") as File | null;
-    if (!file) {
-      return NextResponse.json({ ok: false, message: "Nenhum arquivo enviado." }, { status: 400 });
-    }
+    if (!file) return NextResponse.json({ ok: false, message: "Nenhum arquivo enviado." }, { status: 400 });
     if (!file.name.toLowerCase().endsWith(".docx")) {
-      return NextResponse.json({ ok: false, message: "Somente arquivos .docx são aceitos." }, { status: 400 });
+      return NextResponse.json({ ok: false, message: "Somente .docx são aceitos." }, { status: 400 });
     }
 
     const buf = Buffer.from(await file.arrayBuffer());
     const xml = await extractDocumentXml(buf);
-    const text = xmlToText(xml);
-    const rows = parseRows(text);
+    const { titulo, acoes } = parseDocument(xml);
 
-    if (!rows.length) {
+    const totalSubacoes = acoes.reduce((s, a) => s + a.subacoes.length, 0);
+    if (acoes.length === 0) {
       return NextResponse.json(
-        { ok: false, message: "Nenhuma linha PDCA encontrada. Verifique se o arquivo segue o formato TABELA MESTRE." },
+        { ok: false, message: "Nenhuma ação (AÇÃO 01, AÇÃO 02…) encontrada no documento." },
         { status: 422 },
       );
     }
 
-    const record = buildRecord(rows, file.name);
-    return NextResponse.json({ ok: true, pdca: record, rowCount: rows.length });
+    return NextResponse.json({
+      ok: true,
+      pdca: { titulo, acoes },
+      acaoCount: acoes.length,
+      subacaoCount: totalSubacoes,
+    });
   } catch (err) {
-    const message = err instanceof Error ? err.message : "Falha ao processar DOCX.";
-    return NextResponse.json({ ok: false, message }, { status: 500 });
+    return NextResponse.json(
+      { ok: false, message: err instanceof Error ? err.message : "Falha ao processar DOCX." },
+      { status: 500 },
+    );
   }
 }
