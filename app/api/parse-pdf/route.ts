@@ -365,7 +365,7 @@ export async function POST(req: NextRequest) {
           acao: "Ações União Bag",
           subacao: t.titulo,
           responsavel: t.responsavel,
-          comoFazer: "",
+          comoFazer: t.comoFazer,
           evidencias: "",
           indicador: "",
           meta: "",

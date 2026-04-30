@@ -173,7 +173,7 @@ export async function POST(req: NextRequest) {
           titulo: "Ações União Bag",
           subacoes: tarefasUniao.map(t => ({
             subacao: t.titulo,
-            como_fazer: "",
+            como_fazer: t.comoFazer,
             responsavel: t.responsavel,
             prazo: "",
             evidencia: "",
