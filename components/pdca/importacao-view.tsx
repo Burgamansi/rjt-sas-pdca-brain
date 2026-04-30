@@ -134,7 +134,7 @@ function parseExcelToRecords(buffer: ArrayBuffer): { rows: ParsedRow[]; errors: 
     const headerRow = data[0].map((h) => normalize(h));
     const findColumn = (patterns: string[]): number => {
       for (const p of patterns) {
-        const idx = headerRow.findIndex((h) => h.includes(p));
+        const idx = headerRow.findIndex((h) => String(h ?? "").includes(p));
         if (idx !== -1) return idx;
       }
       return -1;
@@ -165,10 +165,10 @@ function parseExcelToRecords(buffer: ArrayBuffer): { rows: ParsedRow[]; errors: 
 
       const faseRaw = faseIdx !== -1 ? normalize(row[faseIdx]) : "";
       let fase: PdcaPhase = "plan";
-      if (faseRaw.includes("DO") || faseRaw.includes("EXE")) fase = "do";
-      else if (faseRaw.includes("CHECK") || faseRaw.includes("VER")) fase = "check";
-      else if (faseRaw.includes("ACT") || faseRaw.includes("COR")) fase = "act";
-      else if (faseRaw.includes("PLAN") || faseRaw.includes("PLA")) fase = "plan";
+      if (String(faseRaw ?? "").includes("DO") || String(faseRaw ?? "").includes("EXE")) fase = "do";
+      else if (String(faseRaw ?? "").includes("CHECK") || String(faseRaw ?? "").includes("VER")) fase = "check";
+      else if (String(faseRaw ?? "").includes("ACT") || String(faseRaw ?? "").includes("COR")) fase = "act";
+      else if (String(faseRaw ?? "").includes("PLAN") || String(faseRaw ?? "").includes("PLA")) fase = "plan";
 
       const pdca = normalize(row[pdcaIdx]);
       const acao = normalize(row[acaoIdx]);
@@ -249,8 +249,8 @@ function convertToPdcaRecords(rows: ParsedRow[]): PdcaRecord[] {
     });
 
     const statusList = pdcaRows.map(r => r.status.toLowerCase());
-    const allDone = statusList.every(s => s.includes("conclu"));
-    const anyExec = statusList.some(s => s.includes("exec") || s.includes("andamento"));
+    const allDone = statusList.every(s => String(s ?? "").includes("conclu"));
+    const anyExec = statusList.some(s => String(s ?? "").includes("exec") || String(s ?? "").includes("andamento"));
     const overallStatus = allDone ? "Concluido" : anyExec ? "Em Execucao" : "Pendente";
 
     return {
@@ -438,9 +438,9 @@ export function ImportView({ onRefresh, onImport, onDataImported }: ImportViewPr
   const stats = {
     total: parsedRows.length,
     withEvidence: parsedRows.filter(r => r.status !== "Pendente").length,
-    inProgress: parsedRows.filter(r => r.status.toLowerCase().includes("exec") || r.status.toLowerCase().includes("andamento")).length,
-    pending: parsedRows.filter(r => r.status.toLowerCase().includes("pendente")).length,
-    completion: parsedRows.length > 0 ? Math.round((parsedRows.filter(r => r.status.toLowerCase().includes("conclu") || r.status.toLowerCase().includes("done")).length / parsedRows.length) * 100) : 0
+    inProgress: parsedRows.filter(r => String(r.status ?? "").toLowerCase().includes("exec") || String(r.status ?? "").toLowerCase().includes("andamento")).length,
+    pending: parsedRows.filter(r => String(r.status ?? "").toLowerCase().includes("pendente")).length,
+    completion: parsedRows.length > 0 ? Math.round((parsedRows.filter(r => String(r.status ?? "").toLowerCase().includes("conclu") || String(r.status ?? "").toLowerCase().includes("done")).length / parsedRows.length) * 100) : 0
   };
 
   return (
