@@ -16,7 +16,7 @@ type SidebarProps = {
 const NAV: { label: string; desc: string; icon: typeof LayoutDashboard; view: PdcaView }[] = [
   { label: "Painel Executivo", desc: "Dashboard e KPIs", icon: LayoutDashboard, view: "painel" },
   { label: "Portfolio PDCA", desc: "Gestão do portfólio", icon: Layers, view: "portfolio" },
-  { label: "Importar Arquivos", desc: "Upload e validação", icon: UploadCloud, view: "importacao" },
+  { label: "SETUP PDCA", desc: "Upload e setup", icon: UploadCloud, view: "setup" },
   { label: "Persistência SGQ", desc: "Sincronização", icon: Database, view: "persistencia" },
 ];
 

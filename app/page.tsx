@@ -465,13 +465,17 @@ export default function Page() {
           </div>
         )}
 
-        {activeView === "importacao" && (
+        {activeView === "setup" && (
           <div className="min-h-[calc(100vh-120px)]">
             <ImportView
+              pdcas={pdcas}
               onRefresh={() => void loadPdcas()}
               onImport={() => fileInputRef.current?.click()}
               onDataImported={(newPdcas) => {
                 setPdcas((prev) => mergePdcaRecords(prev, newPdcas));
+              }}
+              onSelectSubAction={(sub) => {
+                setSelectedSubAction(sub);
               }}
             />
           </div>

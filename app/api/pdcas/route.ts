@@ -2,6 +2,15 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/server/supabase-admin";
 import { PdcaRecord, PdcaPhase } from "@/lib/types";
 
+function safeString(value: unknown): string {
+  if (value === null || value === undefined) return "";
+  try {
+    return String(value).trim();
+  } catch {
+    return "";
+  }
+}
+
 type PdcaBrainRow = {
   pdca_id: string;
   titulo: string;
@@ -174,16 +183,19 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ok: false, message: "Nenhum PDCA enviado." }, { status: 400 });
   }
 
-  const rows: PdcaBrainRow[] = incoming.map((pdca) => ({
-    pdca_id: String(pdca.id),
-    titulo: pdca.titulo,
-    area: pdca.area,
-    status: pdca.status,
-    gut_total: pdca.analise_gut.total ?? 0,
-    fonte_arquivo: pdca.fonteArquivo ?? null,
-    atualizado_em: pdca.atualizadoEm,
-    payload: pdca,
-  }));
+  const rows: PdcaBrainRow[] = incoming.map((pdca) => {
+    const safeId = safeString(pdca.id) || `PDCA-${Date.now()}`;
+    return {
+      pdca_id: safeId,
+      titulo: safeString(pdca.titulo) || safeId,
+      area: safeString(pdca.area) || "Não atribuído",
+      status: safeString(pdca.status) || "Pendente",
+      gut_total: typeof pdca.analise_gut?.total === "number" ? pdca.analise_gut.total : 0,
+      fonte_arquivo: safeString(pdca.fonteArquivo) || null,
+      atualizado_em: pdca.atualizadoEm || new Date().toISOString(),
+      payload: pdca,
+    };
+  });
 
   const { error } = await supabaseAdmin.from("pdca_brain").upsert(rows, {
     onConflict: "pdca_id",

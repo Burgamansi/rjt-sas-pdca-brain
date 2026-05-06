@@ -4,20 +4,11 @@ import { inflateRaw } from "node:zlib";
 import { promisify } from "node:util";
 import type { PdcaAction, PdcaPhase, PdcaRecord, PdcaSubaction } from "@/lib/types";
 
-// Force Node.js runtime (not Edge) — required for pdf-parse / pdfjs-dist
 export const runtime = "nodejs";
 
 const inflate = promisify(inflateRaw);
 
-// ── Primary extractor: pdf-parse (pure JS, Vercel-compatible) ────────────────
-// Use lib/pdf-parse directly to avoid the index.js test-mode issue in Next.js builds
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const pdfParse = require("pdf-parse/lib/pdf-parse") as (buf: Buffer) => Promise<{ text: string; numpages: number }>;
-
-async function extractWithPdfParse(buf: Buffer): Promise<string> {
-  const data = await pdfParse(buf);
-  return data.text ?? "";
-}
+// ── Extractor: BT/ET stream scanner (no external deps, Vercel-compatible) ────
 
 // ── Fallback extractor: BT/ET stream scanner (no external deps) ──────────────
 // Used when pdf-parse is unavailable or fails.
@@ -104,12 +95,8 @@ async function extractPdfTextFallback(buf: Buffer): Promise<string> {
   return texts.join(" ").replace(/\s+/g, " ").trim();
 }
 
-// ── Combined extractor: pdf-parse → BT/ET fallback ────────────────────────────
+// ── Extractor: BT/ET stream scanner only (no external deps) ───────────────────
 async function extractPdfText(buf: Buffer): Promise<string> {
-  try {
-    const text = await extractWithPdfParse(buf);
-    if (text.length > 50) return text;
-  } catch { /* fall through to BT/ET */ }
   return extractPdfTextFallback(buf);
 }
 
@@ -331,10 +318,16 @@ function buildPreview(text: string, filename: string) {
   return { hasTabela, detectedId, charCount, sampleLines };
 }
 
+function logErr(msg: string, err?: unknown): void {
+  const timestamp = new Date().toISOString();
+  console.error(`[${timestamp}] ${msg}`, err instanceof Error ? err.message : "");
+}
+
 // ── Route handler ─────────────────────────────────────────────────────────────
 
 export async function POST(req: NextRequest) {
   try {
+    logErr("INIT", req.headers.get("content-length"));
     const form = await req.formData();
     const file = form.get("file") as File | null;
     if (!file) return NextResponse.json({ ok: false, message: "Nenhum arquivo enviado." }, { status: 400 });
@@ -350,22 +343,42 @@ export async function POST(req: NextRequest) {
     }
 
     const text = await extractPdfText(buf);
+    logErr("TEXT_LEN", text.length);
 
     // Try pipe-format parser first, then TABELA_MESTRE format
     let rows = parseRows(text);
+    logErr("PIPE_ROWS", rows.length);
     if (rows.length === 0) rows = parseTabelaMestreFormat(text, file.name);
+    logErr("MASTER_ROWS", rows.length);
+
+    let isUniaoBag = false;
+    const PDCA01_COMO_FAZER = [
+  "Analisar NC, retrabalho e dependência técnica",
+  "Mapear processos produtivos críticos",
+  "Redigir objetivo e impacto do programa",
+  "Estabelecer papéis e responsabilidades",
+  "Realizar reunião formal com diretoria",
+  "Inserir na Lista Mestra SGQ",
+];
+
+function mapComoFazer(idx: number, existing: string): string {
+  if (existing && existing !== "—" && existing !== "") return existing;
+  return PDCA01_COMO_FAZER[idx] ?? "";
+}
 
     if (rows.length === 0) {
       const tarefasUniao = analisarDocumentoUniaoBag(text);
+      logErr("UNIAO_ROWS", tarefasUniao.length);
       if (tarefasUniao.length > 0) {
+        isUniaoBag = true;
         rows = tarefasUniao.map((t, idx) => ({
-          id: `UB-A01-${(idx + 1).toString().padStart(2, "0")}`,
-          codPdca: "PDCA-UB",
+          id: `PDCA01-A01-${(idx + 1).toString().padStart(2, "0")}`,
+          codPdca: "PDCA01",
           phase: "do",
-          acao: "Ações União Bag",
+          acao: "1. Gestão do Conhecimento",
           subacao: t.titulo,
           responsavel: t.responsavel,
-          comoFazer: t.comoFazer,
+          comoFazer: mapComoFazer(idx, t.comoFazer),
           evidencias: "",
           indicador: "",
           meta: "",
@@ -377,7 +390,7 @@ export async function POST(req: NextRequest) {
     }
 
     if (rows.length > 0) {
-      const record = buildRecord(rows, file.name);
+      const record = buildRecord(rows, isUniaoBag ? "PDF União Bag" : file.name);
       return NextResponse.json({ ok: true, pdca: record, rowCount: rows.length });
     }
 
@@ -394,6 +407,7 @@ export async function POST(req: NextRequest) {
       suggestion: "Converta o PDF para DOCX e importe pela opção 'Importar Excel / DOCX'.",
     }, { status: 422 });
   } catch (err) {
+    logErr("FATAL", err);
     return NextResponse.json(
       { ok: false, message: err instanceof Error ? err.message : "Falha ao processar PDF." },
       { status: 500 },

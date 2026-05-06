@@ -1,9 +1,11 @@
 "use client";
 
-import { useState, useRef, useCallback } from "react";
-import { Upload, FileSpreadsheet, FileText, CheckCircle, XCircle, AlertTriangle, RefreshCw, Save, X, Layers3, ListChecks, Clock, Gauge, ArrowRight } from "lucide-react";
+import { useState, useRef, useCallback, useMemo } from "react";
+import { Upload, FileSpreadsheet, FileText, CheckCircle, XCircle, AlertTriangle, RefreshCw, Save, X, Layers3, ListChecks, Clock, Gauge, ArrowRight, Filter, Image, File } from "lucide-react";
 import * as XLSX from "xlsx";
 import { PdcaRecord, PdcaPhase } from "@/lib/types";
+import { PdcaGridRow, mapPdcaToGridRows } from "@/lib/pdca-front-mapper";
+import { useAppState } from "@/lib/app-state";
 import { T } from "@/lib/tokens";
 
 const COLORS = {
@@ -23,6 +25,8 @@ type ImportViewProps = {
   onRefresh: () => void;
   onImport: () => void;
   onDataImported: (pdcas: PdcaRecord[]) => void;
+  pdcas?: PdcaRecord[];
+  onSelectSubAction?: (sub: PdcaGridRow) => void;
 };
 
 type Step = "upload" | "validacao" | "previa" | "mapeamento" | "sincronizacao";
@@ -53,6 +57,7 @@ type PdfResult = {
 };
 
 type ImportMode = "excel" | "pdf";
+type ImportTab = "setup" | "estrategia" | "execucao" | "auditoria";
 
 const faseLabels: Record<PdcaPhase, string> = {
   plan: "PLAN",
@@ -122,16 +127,24 @@ function parseExcelToRecords(buffer: ArrayBuffer): { rows: ParsedRow[]; errors: 
   const errors: string[] = [];
   try {
     const workbook = XLSX.read(buffer, { type: "array" });
+    if (!workbook.SheetNames || workbook.SheetNames.length === 0) {
+      errors.push("Nenhuma aba encontrada no arquivo");
+      return { rows: [], errors };
+    }
     const sheetName = workbook.SheetNames[0];
     const sheet = workbook.Sheets[sheetName];
+    if (!sheet) {
+      errors.push("Aba não encontrada");
+      return { rows: [], errors };
+    }
     const data = XLSX.utils.sheet_to_json(sheet, { header: 1 }) as unknown[][];
     
-    if (!data || data.length < 2) {
+    if (!data || data.length < 2 || !data[0]) {
       errors.push("Arquivo vazio ou sem dados");
       return { rows: [], errors };
     }
 
-    const headerRow = data[0].map((h) => normalize(h));
+    const headerRow = (data[0] ?? []).map((h) => normalize(h));
     const findColumn = (patterns: string[]): number => {
       for (const p of patterns) {
         const idx = headerRow.findIndex((h) => String(h ?? "").includes(p));
@@ -209,54 +222,67 @@ function parseExcelToRecords(buffer: ArrayBuffer): { rows: ParsedRow[]; errors: 
 function convertToPdcaRecords(rows: ParsedRow[]): PdcaRecord[] {
   const byPdca = new Map<string, ParsedRow[]>();
   rows.forEach(row => {
-    const key = row.pdca || "PDCA-DEFAULT";
+    const key = safeString(row.pdca) || "PDCA-DEFAULT";
     if (!byPdca.has(key)) byPdca.set(key, []);
     byPdca.get(key)!.push(row);
   });
 
   return Array.from(byPdca.entries()).map(([id, pdcaRows]) => {
+    if (!pdcaRows || pdcaRows.length === 0) {
+      return null;
+    }
+
     const fases: Record<PdcaPhase, { id: string; etapa: string; acao: string; subacoes: object[] }[]> = {
       plan: [], do: [], check: [], act: []
     };
 
-    // Group rows by ação within each fase
     const actionMap = new Map<string, { id: string; etapa: string; acao: string; subacoes: object[] }>();
 
     pdcaRows.forEach((row, rowIdx) => {
-      const actionKey = `${row.fase}::${row.acao}`;
+      const faseKey = safeString(row.fase) || "plan";
+      const acaoKey = safeString(row.acao) || "ACAO-DEFAULT";
+      const actionKey = `${faseKey}::${acaoKey}`;
+      
       if (!actionMap.has(actionKey)) {
         const newAction = {
-          id: `${row.fase.charAt(0).toUpperCase()}${fases[row.fase].length + 1}`,
-          etapa: row.fase.toUpperCase(),
-          acao: row.acao,
+          id: `${(faseKey.charAt(0) || "P").toUpperCase()}${fases[faseKey as PdcaPhase]?.length + 1 || 1}`,
+          etapa: faseKey.toUpperCase(),
+          acao: acaoKey,
           subacoes: [] as object[],
         };
-        actionMap.set(actionKey, newAction);
-        fases[row.fase].push(newAction);
+        if (fases[faseKey as PdcaPhase]) {
+          actionMap.set(actionKey, newAction);
+          fases[faseKey as PdcaPhase].push(newAction);
+        }
       }
-      const action = actionMap.get(actionKey)!;
-      action.subacoes.push({
-        id: `S${row.fase.charAt(0).toUpperCase()}.${rowIdx + 1}`,
-        nome: row.subacao,
-        resp: row.responsavel,
-        gut: 0,
-        indicador: "",
-        meta: row.prazo || "",
-        resultado: "",
-        status: row.status,
-        prazo: row.prazo || "",
-      });
+      const action = actionMap.get(actionKey);
+      if (action) {
+        action.subacoes.push({
+          id: `S${(faseKey.charAt(0) || "P").toUpperCase()}.${rowIdx + 1}`,
+          nome: safeString(row.subacao) || "Subação sem nome",
+          resp: safeString(row.responsavel) || "",
+          gut: 0,
+          indicador: "",
+          meta: safeString(row.prazo) || "",
+          resultado: "",
+          status: safeString(row.status) || "Pendente",
+          prazo: safeString(row.prazo) || "",
+        });
+      }
     });
 
-    const statusList = pdcaRows.map(r => r.status.toLowerCase());
-    const allDone = statusList.every(s => String(s ?? "").includes("conclu"));
-    const anyExec = statusList.some(s => String(s ?? "").includes("exec") || String(s ?? "").includes("andamento"));
+    const statusList = pdcaRows.map(r => safeString(r.status).toLowerCase());
+    const allDone = statusList.every(s => s.includes("conclu"));
+    const anyExec = statusList.some(s => s.includes("exec") || s.includes("andamento"));
     const overallStatus = allDone ? "Concluido" : anyExec ? "Em Execucao" : "Pendente";
 
+    const safeId = safeString(id) || "PDCA-INVALID";
+    const firstRow = pdcaRows[0];
+
     return {
-      id,
-      titulo: id.substring(0, 100),
-      area: pdcaRows[0]?.responsavel || "",
+      id: safeId,
+      titulo: safeId.substring(0, 100),
+      area: safeString(firstRow?.responsavel) || "Não atribuído",
       situacao: `Importado via Excel — ${pdcaRows.length} subações`,
       causas: "",
       analise_gut: { g: 0, u: 0, t: 0, total: 0 },
@@ -265,10 +291,32 @@ function convertToPdcaRecords(rows: ParsedRow[]): PdcaRecord[] {
       fonteArquivo: "Excel Import",
       atualizadoEm: new Date().toISOString()
     };
-  });
+  }).filter((pdca): pdca is PdcaRecord => pdca !== null);
 }
 
-export function ImportView({ onRefresh, onImport, onDataImported }: ImportViewProps) {
+export function ImportView({ onRefresh, onImport, onDataImported, pdcas: propPdcas, onSelectSubAction }: ImportViewProps) {
+  const { pdcas: appPdcas, selectedPdcaId, setSelectedPdcaId } = useAppState();
+  const pdcas = propPdcas || appPdcas;
+  
+  const [activeTab, setActiveTab] = useState<ImportTab>("setup");
+  const [isoFilter, setIsoFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
+  const [selectedSubAction, setSelectedSubAction] = useState<PdcaGridRow | null>(null);
+
+  const allSubactions = useMemo(() => {
+    return pdcas.flatMap(p => mapPdcaToGridRows(p));
+  }, [pdcas]);
+
+  const filteredSubactions = useMemo(() => {
+    let result = allSubactions;
+    if (isoFilter) {
+      result = result.filter(s => s.acao?.includes(isoFilter));
+    }
+    if (statusFilter) {
+      result = result.filter(s => s.status?.toLowerCase().includes(statusFilter.toLowerCase()));
+    }
+    return result;
+  }, [allSubactions, isoFilter, statusFilter]);
   const [importMode, setImportMode] = useState<ImportMode>("excel");
   const [currentStep, setCurrentStep] = useState<Step>("upload");
   const [file, setFile] = useState<File | null>(null);
@@ -478,42 +526,35 @@ export function ImportView({ onRefresh, onImport, onDataImported }: ImportViewPr
         </div>
       </div>
 
-      {/* Stepper Pipeline */}
-      <div className="flex items-center gap-1 rounded-xl border border-cyan-500/20 bg-cyan-950/10 p-3">
-        {steps.map((step, idx) => {
-          const stepIdx = steps.findIndex(s => s.key === currentStep);
-          const isActive = idx === stepIdx;
-          const isCompleted = idx < stepIdx;
-          return (
-            <div key={step.key} className="flex items-center gap-1 flex-1">
-              <div 
-                className={`flex h-9 w-9 items-center justify-center rounded-full text-sm font-bold transition-all ${
-                  isCompleted ? "" :
-                  isActive ? "" :
-                  ""
-                }`}
-                style={{
-                  backgroundColor: isCompleted ? COLORS.success : isActive ? COLORS.neon : "#1a2744",
-                  color: isCompleted || isActive ? "#000" : COLORS.gray,
-                  boxShadow: isActive ? `0_0_15px_${COLORS.neonGlow}` : "none"
-                }}
-              >
-                {isCompleted ? <CheckCircle className="h-4 w-4" /> : idx + 1}
-              </div>
-              <span className="text-xs font-medium hidden sm:inline" style={{ color: isActive ? COLORS.white : COLORS.gray }}>
-                {step.label}
-              </span>
-              {idx < steps.length - 1 && (
-                <ArrowRight className="h-4 w-4 flex-1" style={{ color: COLORS.gray }} />
-              )}
-            </div>
-          );
-        })}
+      {/* 4 Tabs Navigation */}
+      <div className="flex rounded-xl border border-cyan-500/20 bg-cyan-950/10 p-1">
+        {([
+          { key: "setup", label: "SETUP", icon: Upload, desc: "Upload Excel" },
+          { key: "estrategia", label: "ESTRATÉGIA", icon: FileText, desc: "Upload PDF União Bag" },
+          { key: "execucao", label: "EXECUÇÃO", icon: ListChecks, desc: "Grid SubAções ISO" },
+          { key: "auditoria", label: "AUDITORIA", icon: Layers3, desc: "Galeria Evidências" },
+        ] as { key: ImportTab; label: string; icon: typeof Upload; desc: string }[]).map((tab) => (
+          <button
+            key={tab.key}
+            onClick={() => setActiveTab(tab.key)}
+            className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg text-sm font-semibold transition-all ${
+              activeTab === tab.key
+                ? "bg-gradient-to-r from-cyan-600 to-blue-600 text-white shadow-lg"
+                : "text-slate-400 hover:text-white hover:bg-white/5"
+            }`}
+          >
+            <tab.icon className="h-4 w-4" />
+            <span className="hidden md:inline">{tab.label}</span>
+          </button>
+        ))}
       </div>
 
       <div className="grid gap-5 lg:grid-cols-[1fr_320px]">
         {/* Main Content */}
         <div className="space-y-5">
+          {/* TAB SETUP & ESTRATÉGIA - Conteúdo Original */}
+          {(activeTab === "setup" || activeTab === "estrategia") && (
+          <>
           {/* Upload Card com seletor de modo */}
           {currentStep === "upload" && (
             <div className="rounded-2xl border border-[#1E7FD5]/25 bg-[#0E2539]/60 overflow-hidden">
@@ -826,6 +867,172 @@ export function ImportView({ onRefresh, onImport, onDataImported }: ImportViewPr
                   </p>
                 </div>
               </div>
+            </div>
+          )}
+          </>
+          )}
+
+          {/* TAB 3: EXECUÇÃO - Grid de SubAções ISO */}
+          {activeTab === "execucao" && pdcas.length > 0 && (
+            <div className="rounded-2xl border border-cyan-500/25 bg-cyan-950/20 overflow-hidden">
+              <div className="flex items-center justify-between p-4 border-b border-cyan-500/20">
+                <h3 className="text-lg font-bold text-white">Execução - Grid de SubAções ({filteredSubactions.length})</h3>
+                <div className="flex gap-3">
+                  <select 
+                    value={isoFilter} 
+                    onChange={(e) => setIsoFilter(e.target.value)}
+                    className="bg-slate-800 text-white px-3 py-2 rounded-lg border border-cyan-500/30 text-sm"
+                  >
+                    <option value="">Todas as Ações</option>
+                    {[...new Set(allSubactions.map(s => s.acao).filter(Boolean))].map(a => (
+                      <option key={a} value={a}>{a}</option>
+                    ))}
+                  </select>
+                  <select 
+                    value={statusFilter} 
+                    onChange={(e) => setStatusFilter(e.target.value)}
+                    className="bg-slate-800 text-white px-3 py-2 rounded-lg border border-cyan-500/30 text-sm"
+                  >
+                    <option value="">Todos Status</option>
+                    <option value="conclu">Concluído</option>
+                    <option value="exec">Em Execução</option>
+                    <option value="pendente">Pendente</option>
+                    <option value="atras">Atrasado</option>
+                  </select>
+                </div>
+              </div>
+              <div className="overflow-x-auto max-h-[500px] overflow-y-auto">
+                <table className="w-full text-sm">
+                  <thead className="sticky top-0 bg-slate-900 z-10">
+                    <tr className="border-b border-cyan-500/20">
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-cyan-400 uppercase">ID</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-cyan-400 uppercase">Subação</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-cyan-400 uppercase">Ação</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-cyan-400 uppercase">Responsável</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-cyan-400 uppercase">Como Fazer</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-cyan-400 uppercase">Prazo</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-cyan-400 uppercase">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-800/40">
+                    {filteredSubactions.slice(0, 50).map((row, idx) => (
+                      <tr key={`${row.subacaoId}-${idx}`} className="hover:bg-cyan-500/5 transition-colors">
+                        <td className="px-4 py-3 text-cyan-400 font-mono text-xs">{row.subacaoId}</td>
+                        <td className="px-4 py-3 text-white font-medium max-w-[200px] truncate">{row.subacao}</td>
+                        <td className="px-4 py-3 text-slate-400 max-w-[150px] truncate">{row.acao}</td>
+                        <td className="px-4 py-3 text-slate-400">{row.responsavel || "—"}</td>
+                        <td className="px-4 py-3 text-slate-300 text-xs max-w-[200px] truncate">{row.comoFazer || "—"}</td>
+                        <td className="px-4 py-3 text-slate-400">{row.prazo || "—"}</td>
+                        <td className="px-4 py-3">
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                            row.status?.toLowerCase().includes("conclu") ? "bg-emerald-500/20 text-emerald-400" :
+                            row.status?.toLowerCase().includes("exec") || row.status?.toLowerCase().includes("andamento") ? "bg-amber-500/20 text-amber-400" :
+                            row.status?.toLowerCase().includes("atras") ? "bg-rose-500/20 text-rose-400" :
+                            "bg-slate-500/20 text-slate-400"
+                          }`}>
+                            {row.status || "Pendente"}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              {filteredSubactions.length > 50 && (
+                <div className="p-3 text-center text-slate-400 text-sm border-t border-cyan-500/20">
+                  Mostrando 50 de {filteredSubactions.length} subações
+                </div>
+              )}
+            </div>
+          )}
+
+          {activeTab === "execucao" && pdcas.length === 0 && (
+            <div className="rounded-2xl border border-cyan-500/25 bg-cyan-950/20 p-6 text-center">
+              <ListChecks className="h-12 w-12 text-slate-500 mx-auto mb-3" />
+              <p className="text-slate-400">Nenhum PDCA importado. Use a aba SETUP para importar arquivos Excel.</p>
+            </div>
+          )}
+
+          {/* TAB 4: AUDITORIA - Galeria de Evidências */}
+          {activeTab === "auditoria" && (
+            <div className="rounded-2xl border border-cyan-500/25 bg-cyan-950/20 overflow-hidden">
+              <div className="flex items-center justify-between p-4 border-b border-cyan-500/20">
+                <h3 className="text-lg font-bold text-white">Auditoria - Galeria de Evidências ({allSubactions.length})</h3>
+                <button 
+                  onClick={() => onSelectSubAction?.(selectedSubAction!)}
+                  disabled={!selectedSubAction}
+                  className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-cyan-600 to-blue-600 rounded-lg text-white text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <Upload className="h-4 w-4" />
+                  Upload Evidência
+                </button>
+              </div>
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 p-4">
+                {allSubactions.slice(0, 40).map((sub, idx) => {
+                  const hasEvidence = sub.resultado || sub.evidenciaSgq;
+                  return (
+                    <div 
+                      key={`${sub.subacaoId}-${idx}`}
+                      onClick={() => setSelectedSubAction(sub)}
+                      className={`bg-slate-800/50 rounded-xl p-4 border transition-all cursor-pointer hover:scale-105 ${
+                        selectedSubAction?.subacaoId === sub.subacaoId 
+                          ? "border-cyan-500 bg-cyan-500/10" 
+                          : "border-slate-700 hover:border-cyan-500/50"
+                      }`}
+                    >
+                      <div className={`h-20 rounded-lg mb-3 flex items-center justify-center ${
+                        hasEvidence ? "bg-emerald-500/10" : "bg-slate-700"
+                      }`}>
+                        {hasEvidence ? (
+                          <CheckCircle className="h-8 w-8 text-emerald-400" />
+                        ) : (
+                          <FileText className="h-8 w-8 text-slate-500" />
+                        )}
+                      </div>
+                      <p className="text-xs text-cyan-400 font-mono">{sub.subacaoId}</p>
+                      <p className="text-xs text-slate-300 mt-1 truncate">{sub.subacao}</p>
+                      <p className={`text-xs mt-2 ${
+                        hasEvidence ? "text-emerald-400" : "text-slate-500"
+                      }`}>
+                        {hasEvidence ? "✓ 1 evidência" : "Sem evidência"}
+                      </p>
+                    </div>
+                  );
+                })}
+              </div>
+              {selectedSubAction && (
+                <div className="p-4 border-t border-cyan-500/20 bg-cyan-950/30">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-cyan-400 font-mono">{selectedSubAction.subacaoId}</p>
+                      <p className="text-white font-medium mt-1">{selectedSubAction.subacao}</p>
+                      <p className="text-slate-400 text-sm mt-1">Como fazer: {selectedSubAction.comoFazer || "—"}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-xs text-slate-500">Status</p>
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                        selectedSubAction.status?.toLowerCase().includes("conclu") ? "bg-emerald-500/20 text-emerald-400" :
+                        selectedSubAction.status?.toLowerCase().includes("exec") ? "bg-amber-500/20 text-amber-400" :
+                        "bg-slate-500/20 text-slate-400"
+                      }`}>
+                        {selectedSubAction.status || "Pendente"}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )}
+              {allSubactions.length > 40 && (
+                <div className="p-3 text-center text-slate-400 text-sm border-t border-cyan-500/20">
+                  Mostrando 40 de {allSubactions.length} subações
+                </div>
+              )}
+            </div>
+          )}
+
+          {activeTab === "auditoria" && pdcas.length === 0 && (
+            <div className="rounded-2xl border border-cyan-500/25 bg-cyan-950/20 p-6 text-center">
+              <Layers3 className="h-12 w-12 text-slate-500 mx-auto mb-3" />
+              <p className="text-slate-400">Nenhum PDCA importado. Use a aba SETUP para importar arquivos Excel.</p>
             </div>
           )}
         </div>

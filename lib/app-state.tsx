@@ -6,7 +6,7 @@ import { PdcaGridRow, mapPdcaToGridRows } from "@/lib/pdca-front-mapper";
 
 export type PdcaFilter = "all" | "done" | "progress" | "late" | "pending";
 
-export type PdcaView = "painel" | "portfolio" | "importacao" | "persistencia";
+export type PdcaView = "painel" | "portfolio" | "setup" | "estrategia" | "execucao" | "auditoria" | "persistencia";
 
 export type AppState = {
   pdcas: PdcaRecord[];
@@ -194,15 +194,29 @@ export function useFilteredData() {
 
     const completion = total > 0 ? Math.round((done / total) * 100) : 0;
 
-    // Regra: apenas PDCAs Excel — via ImportView ("Excel Import") ou TopBar (.xlsx/.xls)
     const excelPdcaCount = filteredPdcas.filter((p) => {
       const f = p.fonteArquivo ?? "";
       return f === "Excel Import" || /\.(xlsx|xls)$/i.test(f);
     }).length;
 
+    const pdfUniaoBagCount = filteredPdcas.filter((p) => {
+      const f = p.fonteArquivo ?? "";
+      return f === "PDF União Bag" || /união\s*bag|uniao\s*bag/i.test(f);
+    }).length;
+
+    const demoCount = filteredPdcas.filter((p) => {
+      const f = p.fonteArquivo ?? "";
+      return f === "Demo" || f === "Demo Mode";
+    }).length;
+
+    const totalImported = excelPdcaCount + pdfUniaoBagCount;
+
     return {
       pdcaCount: filteredPdcas.length,
       excelPdcaCount,
+      pdfUniaoBagCount,
+      demoCount,
+      totalImported,
       subactionCount: total,
       done,
       inProgress,
