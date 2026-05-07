@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useCallback, useMemo } from "react";
-import { Upload, FileSpreadsheet, FileText, CheckCircle, XCircle, AlertTriangle, RefreshCw, Save, X, Layers3, ListChecks, Clock, Gauge, ArrowRight, Filter, Image, File } from "lucide-react";
+import { Upload, FileSpreadsheet, FileText, CheckCircle, XCircle, AlertTriangle, RefreshCw, Save, X, Layers3, ListChecks, Clock, Gauge, ArrowRight, Filter, Image, File, Trash2 } from "lucide-react";
 import * as XLSX from "xlsx";
 import { PdcaRecord, PdcaPhase } from "@/lib/types";
 import { PdcaGridRow, mapPdcaToGridRows } from "@/lib/pdca-front-mapper";
@@ -295,7 +295,7 @@ function convertToPdcaRecords(rows: ParsedRow[]): PdcaRecord[] {
 }
 
 export function ImportView({ onRefresh, onImport, onDataImported, pdcas: propPdcas, onSelectSubAction }: ImportViewProps) {
-  const { pdcas: appPdcas, selectedPdcaId, setSelectedPdcaId } = useAppState();
+  const { pdcas: appPdcas, selectedPdcaId, setSelectedPdcaId, clearPdcas } = useAppState();
   const pdcas = propPdcas || appPdcas;
   
   const [activeTab, setActiveTab] = useState<ImportTab>("setup");
@@ -521,6 +521,33 @@ export function ImportView({ onRefresh, onImport, onDataImported, pdcas: propPdc
             >
               <Upload className="h-4 w-4" />
               Importar Excel
+            </button>
+          </div>
+          <div className="flex gap-3 mt-3">
+            <button
+              onClick={handleImport}
+              disabled={parsedRows.length === 0}
+              className="flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 transition-all"
+            >
+              <Save className="h-4 w-4" />
+              SALVAR ({parsedRows.length} registros)
+            </button>
+            <button
+              onClick={() => {
+                if (window.confirm("⚠️ ZERAR BASE DE DADOS?\n\nIsso removerá todos os PDCAs do sistema. Esta ação não pode ser desfeita.")) {
+                  clearPdcas();
+                  setParsedRows([]);
+                  setFileResults([]);
+                  setPdfResults([]);
+                  setSuccess(false);
+                  setErrors([]);
+                  alert("Base de dados została zerada!");
+                }
+              }}
+              className="flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-500 transition-all"
+            >
+              <Trash2 className="h-4 w-4" />
+              ZERAR BASE
             </button>
           </div>
         </div>

@@ -32,6 +32,7 @@ export type AppState = {
   setActiveView: (view: PdcaView) => void;
 
   clearFilters: () => void;
+  clearPdcas: () => void;
 
   getFilteredPdcas: () => PdcaRecord[];
   getFilteredSubactions: () => PdcaGridRow[];
@@ -70,6 +71,12 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     setSelectedResponsible("all");
     setSelectedActionId("");
     setSearchTerm("");
+  };
+
+  const clearPdcas = () => {
+    setPdcas([]);
+    setSelectedPdcaId("");
+    setSelectedSubAction(null);
   };
 
   const getFilteredPdcas = (): PdcaRecord[] => {
@@ -152,6 +159,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       setSearchTerm,
       setActiveView,
       clearFilters,
+      clearPdcas,
       getFilteredPdcas,
       getFilteredSubactions,
     }),
