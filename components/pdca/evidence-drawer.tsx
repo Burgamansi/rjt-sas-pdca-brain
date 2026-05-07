@@ -54,7 +54,6 @@ function parseRichText(text: string): TextBlock[] {
       if (idx < rawBullets.length - 1) {
         bullets.push(item);
       } else {
-        // Detecta parágrafo de fechamento após o último ")" do bullet
         const match = item.match(/^([\s\S]+?\))\s+([A-ZÁÀÂÃÉÈÍÓÔÕÚÇ][\s\S]*)$/);
         if (match) {
           bullets.push(match[1].trim());
@@ -73,14 +72,14 @@ function parseRichText(text: string): TextBlock[] {
 
 function emojiTheme(emoji: string) {
   if (emoji === "🔴" || emoji === "🟠")
-    return { border: "border-rose-500/25", bg: "bg-rose-500/8", heading: "text-rose-300", dot: "bg-rose-500", badge: "bg-rose-500/20 text-rose-300" };
+    return { border: "border-rose-300/60", bg: "bg-rose-50", heading: "text-rose-700", dot: "bg-rose-500", badge: "bg-rose-100 text-rose-600" };
   if (emoji === "🔵" || emoji === "🟣")
-    return { border: "border-blue-500/25", bg: "bg-blue-500/8", heading: "text-blue-300", dot: "bg-blue-500", badge: "bg-blue-500/20 text-blue-300" };
+    return { border: "border-blue-300/60", bg: "bg-blue-50", heading: "text-blue-700", dot: "bg-blue-500", badge: "bg-blue-100 text-blue-600" };
   if (emoji === "🟢")
-    return { border: "border-emerald-500/25", bg: "bg-emerald-500/8", heading: "text-emerald-300", dot: "bg-emerald-500", badge: "bg-emerald-500/20 text-emerald-300" };
+    return { border: "border-emerald-300/60", bg: "bg-emerald-50", heading: "text-emerald-700", dot: "bg-emerald-500", badge: "bg-emerald-100 text-emerald-600" };
   if (emoji === "🟡")
-    return { border: "border-amber-500/25", bg: "bg-amber-500/8", heading: "text-amber-300", dot: "bg-amber-500", badge: "bg-amber-500/20 text-amber-300" };
-  return { border: "border-slate-600/30", bg: "bg-slate-800/30", heading: "text-slate-200", dot: "bg-slate-400", badge: "bg-slate-700/60 text-slate-300" };
+    return { border: "border-amber-300/60", bg: "bg-amber-50", heading: "text-amber-700", dot: "bg-amber-500", badge: "bg-amber-100 text-amber-600" };
+  return { border: "border-slate-200", bg: "bg-slate-50", heading: "text-slate-700", dot: "bg-slate-400", badge: "bg-slate-100 text-slate-600" };
 }
 
 function emojiLabel(emoji: string): string {
@@ -104,7 +103,7 @@ function emojiLabel(emoji: string): string {
 
 function RichText({ text }: { text: string }) {
   const blocks = parseRichText(text);
-  if (!blocks.length) return <span className="text-slate-500 text-sm">—</span>;
+  if (!blocks.length) return <span className="text-slate-400 text-sm">—</span>;
 
   const sectionCount = blocks.filter(b => b.kind === "section").length;
   let stepIdx = 0;
@@ -114,7 +113,7 @@ function RichText({ text }: { text: string }) {
       {blocks.map((block, i) => {
         if (block.kind === "intro") {
           return (
-            <p key={i} className="text-sm text-slate-300 leading-relaxed px-0.5">
+            <p key={i} className="text-sm text-slate-600 leading-relaxed px-0.5">
               {block.text}
             </p>
           );
@@ -125,7 +124,6 @@ function RichText({ text }: { text: string }) {
 
         return (
           <div key={i} className={`rounded-xl border ${t.border} ${t.bg} overflow-hidden`}>
-            {/* Cabeçalho */}
             <div className={`flex items-center gap-2.5 px-3.5 py-2.5 border-b ${t.border}`}>
               <span className="text-base leading-none flex-shrink-0">{block.emoji}</span>
               <div className="flex-1 min-w-0">
@@ -144,11 +142,10 @@ function RichText({ text }: { text: string }) {
               )}
             </div>
 
-            {/* Itens numerados */}
             {block.bullets.length > 0 && (
               <ol className="px-3.5 py-3 space-y-2.5">
                 {block.bullets.map((bullet, j) => (
-                  <li key={j} className="flex items-start gap-2.5 text-xs text-slate-300">
+                  <li key={j} className="flex items-start gap-2.5 text-xs text-slate-600">
                     <span className={`mt-0.5 flex-shrink-0 h-4 w-4 rounded-full ${t.dot} flex items-center justify-center text-[9px] font-bold text-white`}>
                       {j + 1}
                     </span>
@@ -158,10 +155,9 @@ function RichText({ text }: { text: string }) {
               </ol>
             )}
 
-            {/* Parágrafo de fechamento */}
             {block.closing && (
               <div className={`px-3.5 pb-3 border-t ${t.border}`}>
-                <p className="pt-2.5 text-xs text-slate-400 leading-relaxed italic">{block.closing}</p>
+                <p className="pt-2.5 text-xs text-slate-500 leading-relaxed italic">{block.closing}</p>
               </div>
             )}
           </div>
@@ -170,6 +166,7 @@ function RichText({ text }: { text: string }) {
     </div>
   );
 }
+
 import { fetchEvidences, uploadEvidence, type Evidence } from "@/lib/evidences";
 
 type EvidenceFile = {
@@ -207,11 +204,11 @@ const fileIcons: Record<string, typeof FileText> = {
 };
 
 const fileColors: Record<string, string> = {
-  pdf: "text-red-400 bg-red-500/20",
-  xlsx: "text-emerald-400 bg-emerald-500/20",
-  png: "text-purple-400 bg-purple-500/20",
-  jpg: "text-purple-400 bg-purple-500/20",
-  docx: "text-blue-400 bg-blue-500/20",
+  pdf:  "text-red-600 bg-red-100",
+  xlsx: "text-emerald-600 bg-emerald-100",
+  png:  "text-purple-600 bg-purple-100",
+  jpg:  "text-purple-600 bg-purple-100",
+  docx: "text-blue-600 bg-blue-100",
 };
 
 function formatDate(dateStr: string): string {
@@ -257,22 +254,9 @@ export function EvidenceDrawer({ isOpen, onClose, subAction }: EvidenceDrawerPro
     }
   }, [isOpen, subAction?.pdcaId, subAction?.id]);
 
-  // FALLBACK: dados mock se não houver evidência (usar só se empty e sem Supabase)
   const mockFiles: EvidenceFile[] = [
-    {
-      id: "1",
-      name: "Relatório_Auditória_Q1.pdf",
-      type: "pdf",
-      uploadedAt: "2024-03-15",
-      size: 245000,
-    },
-    {
-      id: "2",
-      name: "Planilha_Metros.xlsx",
-      type: "xlsx",
-      uploadedAt: "2024-03-10",
-      size: 89000,
-    },
+    { id: "1", name: "Relatório_Auditória_Q1.pdf", type: "pdf", uploadedAt: "2024-03-15", size: 245000 },
+    { id: "2", name: "Planilha_Metros.xlsx",       type: "xlsx", uploadedAt: "2024-03-10", size: 89000 },
   ];
   const displayFiles = files.length > 0 ? files : mockFiles;
 
@@ -291,10 +275,10 @@ export function EvidenceDrawer({ isOpen, onClose, subAction }: EvidenceDrawerPro
     input.onchange = async (e) => {
       const file = (e.target as HTMLInputElement).files?.[0];
       if (!file || !subAction?.pdcaId || !subAction?.id) return;
-      
+
       setIsUploading(true);
       const result = await uploadEvidence(subAction.pdcaId, subAction.id, file);
-      
+
       if (result) {
         setFiles((prev) => [
           ...prev,
@@ -315,25 +299,25 @@ export function EvidenceDrawer({ isOpen, onClose, subAction }: EvidenceDrawerPro
   return (
     <>
       <div
-        className="fixed inset-0 bg-black/50 z-40 transition-opacity"
+        className="fixed inset-0 bg-black/30 z-40 transition-opacity"
         onClick={onClose}
       />
 
-      <aside className="fixed right-0 top-0 h-full w-full sm:max-w-lg bg-[#08192E] border-l border-[#1E7FD5]/20 z-50 flex flex-col">
+      <aside className="fixed right-0 top-0 h-full w-full sm:max-w-lg bg-white border-l border-slate-200 z-50 flex flex-col shadow-xl">
         {/* ── Cabeçalho fixo ── */}
-        <div className="flex-shrink-0 bg-[#08192E] border-b border-[#1E7FD5]/20 px-5 py-4">
+        <div className="flex-shrink-0 bg-white border-b border-slate-200 px-5 py-4">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2 mb-1">
-                <span className="text-[10px] font-semibold uppercase tracking-widest text-slate-500">{subAction.pdcaId}</span>
-                <span className="text-slate-700">·</span>
-                <span className="text-[10px] font-semibold uppercase tracking-widest text-slate-500">{subAction.id}</span>
+                <span className="text-[10px] font-semibold uppercase tracking-widest text-slate-400">{subAction.pdcaId}</span>
+                <span className="text-slate-300">·</span>
+                <span className="text-[10px] font-semibold uppercase tracking-widest text-slate-400">{subAction.id}</span>
               </div>
-              <h2 className="text-base font-bold text-white leading-snug line-clamp-2">{subAction.descricao}</h2>
+              <h2 className="text-base font-bold text-slate-800 leading-snug line-clamp-2">{subAction.descricao}</h2>
             </div>
             <button
               onClick={onClose}
-              className="flex-shrink-0 p-2 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-white transition-colors mt-0.5"
+              className="flex-shrink-0 p-2 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition-colors mt-0.5"
             >
               <X className="h-5 w-5" />
             </button>
@@ -343,21 +327,21 @@ export function EvidenceDrawer({ isOpen, onClose, subAction }: EvidenceDrawerPro
           <div className="flex items-center gap-3 mt-3">
             <span className={`inline-flex rounded-full border px-2.5 py-0.5 text-xs font-semibold ${
               subAction.status?.toLowerCase().includes("conclu")
-                ? "border-emerald-400/50 bg-emerald-500/15 text-emerald-300"
+                ? "border-emerald-400/50 bg-emerald-500/15 text-emerald-700"
                 : subAction.status?.toLowerCase().includes("andamento") || subAction.status?.toLowerCase().includes("exec")
-                  ? "border-amber-400/50 bg-amber-500/15 text-amber-300"
-                  : "border-slate-600/50 bg-slate-700/30 text-slate-400"
+                  ? "border-amber-400/50 bg-amber-500/15 text-amber-700"
+                  : "border-slate-300 bg-slate-100 text-slate-500"
             }`}>
               {subAction.status || "Pendente"}
             </span>
             {late && (
-              <span className="inline-flex items-center gap-1 rounded-full border border-rose-500/40 bg-rose-500/15 px-2.5 py-0.5 text-xs font-semibold text-rose-300">
+              <span className="inline-flex items-center gap-1 rounded-full border border-rose-400/50 bg-rose-500/15 px-2.5 py-0.5 text-xs font-semibold text-rose-700">
                 <AlertTriangle className="h-3 w-3" />
                 Atrasado
               </span>
             )}
             <div className="flex-1 flex items-center gap-2">
-              <div className="flex-1 h-1.5 bg-slate-800 rounded-full overflow-hidden">
+              <div className="flex-1 h-1.5 bg-slate-200 rounded-full overflow-hidden">
                 <div
                   className={`h-full rounded-full transition-all ${
                     subAction.progresso >= 90 ? "bg-emerald-500" : subAction.progresso >= 50 ? "bg-amber-500" : "bg-rose-500"
@@ -365,167 +349,160 @@ export function EvidenceDrawer({ isOpen, onClose, subAction }: EvidenceDrawerPro
                   style={{ width: `${subAction.progresso}%` }}
                 />
               </div>
-              <span className="text-xs font-bold tabular-nums text-slate-400 flex-shrink-0">{subAction.progresso}%</span>
+              <span className="text-xs font-bold tabular-nums text-slate-500 flex-shrink-0">{subAction.progresso}%</span>
             </div>
           </div>
         </div>
 
         {/* ── Corpo rolável ── */}
-        <div className="flex-1 overflow-y-auto">
-        <div className="px-5 py-5 space-y-6">
+        <div className="flex-1 overflow-y-auto bg-slate-50">
+          <div className="px-5 py-5 space-y-5">
 
-          {/* ── Metadados ── */}
-          <section className="grid grid-cols-2 gap-3">
-            <div className="rounded-xl bg-slate-800/50 p-3">
-              <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-500 mb-1">Responsável</p>
-              <p className="text-sm font-medium text-white">{subAction.responsavel || "—"}</p>
-            </div>
-            <div className={`rounded-xl p-3 ${late ? "bg-rose-500/10 border border-rose-500/25" : "bg-slate-800/50"}`}>
-              <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-500 mb-1">Prazo</p>
-              <p className={`text-sm font-medium ${late ? "text-rose-400" : "text-white"}`}>
-                {subAction.prazo || "—"}
-              </p>
-            </div>
-          </section>
-
-          {/* ── Como Fazer (rich text) ── */}
-          {subAction.comoFazer && (
-            <section>
-              <div className="flex items-center gap-2 mb-3">
-                <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-500">Como Fazer</p>
-                <div className="flex-1 h-px bg-slate-800" />
+            {/* ── Metadados ── */}
+            <section className="grid grid-cols-2 gap-3">
+              <div className="rounded-xl bg-white border border-slate-200 p-3">
+                <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-1">Responsável</p>
+                <p className="text-sm font-medium text-slate-800">{subAction.responsavel || "—"}</p>
               </div>
-              <RichText text={subAction.comoFazer} />
-            </section>
-          )}
-
-          {/* ── Evidência SGQ ── */}
-          {subAction.evidenciaSgq && (
-            <section className="rounded-xl border border-[#1E7FD5]/25 bg-[#1E7FD5]/8 p-3.5">
-              <p className="text-[10px] font-semibold uppercase tracking-widest text-[#82C4F8] mb-1.5">Evidência SGQ Esperada</p>
-              <p className="text-sm text-blue-200 font-medium leading-relaxed">{subAction.evidenciaSgq}</p>
-            </section>
-          )}
-
-          {/* ── Stats inline ── */}
-          <section className="grid grid-cols-2 gap-3">
-            <div className="flex items-center gap-2.5 rounded-xl bg-slate-800/50 p-3">
-              <Paperclip className="h-4 w-4 text-slate-400 flex-shrink-0" />
-              <div>
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Arquivos</p>
-                <p className="text-sm font-bold text-white">{files.length}</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-2.5 rounded-xl bg-slate-800/50 p-3">
-              <Clock className="h-4 w-4 text-slate-400 flex-shrink-0" />
-              <div>
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Atualização</p>
-                <p className="text-sm font-bold text-white">{lastUpdate ? formatDate(lastUpdate) : "—"}</p>
-              </div>
-            </div>
-          </section>
-
-          <section>
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-sm font-semibold text-slate-300">EVIDÊNCIAS</h3>
-              <button
-                onClick={handleFileUpload}
-                disabled={isUploading}
-                className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-white text-xs font-medium transition-colors"
-              >
-                <Upload className="h-3 w-3" />
-                {isUploading ? "Enviando..." : "Enviar"}
-              </button>
-            </div>
-
-            {files.length === 0 ? (
-              <div className="bg-slate-800/30 rounded-xl p-6 text-center border border-dashed border-[#1E7FD5]/20">
-                <Upload className="h-8 w-8 text-slate-500 mx-auto mb-2" />
-                <p className="text-sm text-slate-400">Nenhuma evidência enviada</p>
-                <p className="text-xs text-slate-500 mt-1">
-                  Arraste arquivos ou clique em Enviar
+              <div className={`rounded-xl p-3 ${late ? "bg-rose-50 border border-rose-200" : "bg-white border border-slate-200"}`}>
+                <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-1">Prazo</p>
+                <p className={`text-sm font-medium ${late ? "text-rose-600" : "text-slate-800"}`}>
+                  {subAction.prazo || "—"}
                 </p>
               </div>
-            ) : (
-              <div className="space-y-2">
-                {files.map((file) => {
-                  const IconComponent = fileIcons[file.type] || File;
-                  return (
-                    <div
-                      key={file.id}
-                      className="flex items-center gap-3 p-3 bg-slate-800/50 rounded-lg hover:bg-slate-800 transition-colors"
-                    >
-                      <div
-                        className={`p-2 rounded-lg ${
-                          fileColors[file.type] || "text-slate-400 bg-slate-700"
-                        }`}
-                      >
-                        <IconComponent className="h-4 w-4" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-white truncate">
-                          {file.name}
-                        </p>
-                        <p className="text-xs text-slate-500">
-                          {formatDate(file.uploadedAt)} • {formatFileSize(file.size)}
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <button className="p-2 rounded-lg hover:bg-slate-700 text-slate-400 hover:text-white">
-                          <Eye className="h-4 w-4" />
-                        </button>
-                        <button className="p-2 rounded-lg hover:bg-slate-700 text-slate-400 hover:text-white">
-                          <Download className="h-4 w-4" />
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </section>
+            </section>
 
-          <section>
-            <h3 className="text-sm font-semibold text-slate-300 mb-3">ALERTAS</h3>
-            <div className="space-y-2">
-              {late && (
-                <div className="flex items-start gap-3 p-3 bg-red-500/10 border border-red-500/30 rounded-lg">
-                  <AlertTriangle className="h-5 w-5 text-red-400 shrink-0 mt-0.5" />
-                  <div>
-                    <p className="text-sm font-medium text-red-300">Prazo Atrasado</p>
-                    <p className="text-xs text-red-400/70">
-                      O prazo expirou em {formatDate(subAction.prazo)}
-                    </p>
-                  </div>
+            {/* ── Como Fazer (rich text) ── */}
+            {subAction.comoFazer && (
+              <section>
+                <div className="flex items-center gap-2 mb-3">
+                  <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-400">Como Fazer</p>
+                  <div className="flex-1 h-px bg-slate-200" />
+                </div>
+                <RichText text={subAction.comoFazer} />
+              </section>
+            )}
+
+            {/* ── Evidência SGQ ── */}
+            {subAction.evidenciaSgq && (
+              <section className="rounded-xl border border-[#006AD7]/20 bg-[#006AD7]/5 p-3.5">
+                <p className="text-[10px] font-semibold uppercase tracking-widest text-[#006AD7] mb-1.5">Evidência SGQ Esperada</p>
+                <p className="text-sm text-[#006AD7] font-medium leading-relaxed">{subAction.evidenciaSgq}</p>
+              </section>
+            )}
+
+            {/* ── Stats inline ── */}
+            <section className="grid grid-cols-2 gap-3">
+              <div className="flex items-center gap-2.5 rounded-xl bg-white border border-slate-200 p-3">
+                <Paperclip className="h-4 w-4 text-slate-400 flex-shrink-0" />
+                <div>
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Arquivos</p>
+                  <p className="text-sm font-bold text-slate-800">{files.length}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2.5 rounded-xl bg-white border border-slate-200 p-3">
+                <Clock className="h-4 w-4 text-slate-400 flex-shrink-0" />
+                <div>
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Atualização</p>
+                  <p className="text-sm font-bold text-slate-800">{lastUpdate ? formatDate(lastUpdate) : "—"}</p>
+                </div>
+              </div>
+            </section>
+
+            {/* ── Evidências ── */}
+            <section>
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500">Evidências</h3>
+                <button
+                  onClick={handleFileUpload}
+                  disabled={isUploading}
+                  className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-[#006AD7] hover:bg-[#0059B3] text-white text-xs font-medium transition-colors disabled:opacity-50"
+                >
+                  <Upload className="h-3 w-3" />
+                  {isUploading ? "Enviando..." : "Enviar"}
+                </button>
+              </div>
+
+              {files.length === 0 ? (
+                <div className="bg-white rounded-xl p-6 text-center border border-dashed border-slate-300">
+                  <Upload className="h-8 w-8 text-slate-300 mx-auto mb-2" />
+                  <p className="text-sm text-slate-500">Nenhuma evidência enviada</p>
+                  <p className="text-xs text-slate-400 mt-1">
+                    Arraste arquivos ou clique em Enviar
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {files.map((file) => {
+                    const IconComponent = fileIcons[file.type] || File;
+                    return (
+                      <div
+                        key={file.id}
+                        className="flex items-center gap-3 p-3 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors"
+                      >
+                        <div className={`p-2 rounded-lg ${fileColors[file.type] || "text-slate-500 bg-slate-100"}`}>
+                          <IconComponent className="h-4 w-4" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-slate-800 truncate">{file.name}</p>
+                          <p className="text-xs text-slate-400">
+                            {formatDate(file.uploadedAt)} • {formatFileSize(file.size)}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <button className="p-2 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition-colors">
+                            <Eye className="h-4 w-4" />
+                          </button>
+                          <button className="p-2 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition-colors">
+                            <Download className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               )}
-              {!hasEvidence && (
-                <div className="flex items-start gap-3 p-3 bg-amber-500/10 border border-amber-500/30 rounded-lg">
-                  <Clock className="h-5 w-5 text-amber-400 shrink-0 mt-0.5" />
-                  <div>
-                    <p className="text-sm font-medium text-amber-300">
-                      Evidência Pendente
-                    </p>
-                    <p className="text-xs text-amber-400/70">
-                      Nenhum arquivo enviado ainda
-                    </p>
+            </section>
+
+            {/* ── Alertas ── */}
+            <section>
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-3">Alertas</h3>
+              <div className="space-y-2">
+                {late && (
+                  <div className="flex items-start gap-3 p-3 bg-rose-50 border border-rose-200 rounded-lg">
+                    <AlertTriangle className="h-5 w-5 text-rose-500 shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-sm font-medium text-rose-700">Prazo Atrasado</p>
+                      <p className="text-xs text-rose-500">
+                        O prazo expirou em {formatDate(subAction.prazo)}
+                      </p>
+                    </div>
                   </div>
-                </div>
-              )}
-              {subAction.progresso >= 100 && hasEvidence && (
-                <div className="flex items-start gap-3 p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-lg">
-                  <CheckCircle className="h-5 w-5 text-emerald-400 shrink-0 mt-0.5" />
-                  <div>
-                    <p className="text-sm font-medium text-emerald-300">Subação Concluída</p>
-                    <p className="text-xs text-emerald-400/70">
-                      Todas as evidências foram enviadas
-                    </p>
+                )}
+                {!hasEvidence && (
+                  <div className="flex items-start gap-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                    <Clock className="h-5 w-5 text-amber-500 shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-sm font-medium text-amber-700">Evidência Pendente</p>
+                      <p className="text-xs text-amber-500">Nenhum arquivo enviado ainda</p>
+                    </div>
                   </div>
-                </div>
-              )}
-            </div>
-          </section>
-        </div>
+                )}
+                {subAction.progresso >= 100 && hasEvidence && (
+                  <div className="flex items-start gap-3 p-3 bg-emerald-50 border border-emerald-200 rounded-lg">
+                    <CheckCircle className="h-5 w-5 text-emerald-500 shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-sm font-medium text-emerald-700">Subação Concluída</p>
+                      <p className="text-xs text-emerald-500">Todas as evidências foram enviadas</p>
+                    </div>
+                  </div>
+                )}
+                {!late && hasEvidence && subAction.progresso < 100 && (
+                  <p className="text-xs text-slate-400 text-center py-2">Nenhum alerta ativo.</p>
+                )}
+              </div>
+            </section>
+          </div>
         </div>
       </aside>
     </>

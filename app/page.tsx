@@ -1,12 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
-import { AlertTriangle, CheckCircle2, Clock, Gauge, Layers3, ListChecks } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import { parsePdcaWorkbookFromArrayBuffer } from "@/lib/pdca-parser";
 import { PdcaImportResult, PdcaRecord } from "@/lib/types";
-import { ImportLogPanel } from "@/components/pdca/import-log-panel";
-import { KpiCard } from "@/components/pdca/kpi-card";
-import { TableGridPDCA } from "@/components/pdca/table-grid-pdca";
 import { EvidenceDrawer } from "@/components/pdca/evidence-drawer";
 import { Sidebar } from "@/components/pdca/sidebar";
 import { TopBar } from "@/components/pdca/top-bar";
@@ -15,7 +11,8 @@ import { useAppState, useFilteredData } from "@/lib/app-state";
 import { PortfolioView } from "@/components/pdca/portfolio-view";
 import { ImportView } from "@/components/pdca/importacao-view";
 import { PersistenciaView } from "@/components/pdca/persistencia-view";
-import { PdcaFlowStepper } from "@/components/pdca/pdca-flow-stepper";
+import { CommandCenterView } from "@/components/pdca/command-center-view";
+import { RightRail } from "@/components/pdca/right-rail";
 
 type PdcaComputedMetrics = {
   totalSubactions: number;
@@ -281,7 +278,16 @@ export default function Page() {
         onClose={() => setSidebarOpen(false)}
       />
 
-      <main className="mx-auto max-w-[1600px] px-4 py-5 lg:pl-80 lg:pr-8">
+      {activeView === "painel" && (
+        <RightRail
+          pdcas={pdcas}
+          selectedPdcaId={selectedPdcaId}
+          onSelectPdca={setSelectedPdcaId}
+          stats={stats}
+        />
+      )}
+
+      <main className={`px-4 py-5 lg:pl-60 ${activeView === "painel" ? "xl:pr-[312px]" : ""}`}>
         <TopBar
           importing={importing}
           loading={loading}
@@ -309,130 +315,18 @@ export default function Page() {
         ) : null}
 
         {activeView === "painel" && (
-          <div className="mt-6">
-            <PdcaFlowStepper loading={loading} />
-          </div>
-        )}
-
-        {activeView === "painel" && (
-          <section className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
-            <KpiCard
-              title="PDCAs Ativos"
-              value={String(stats.excelPdcaCount)}
-              subtitle={`${stats.pdcaCount} total no portfolio`}
-              gradientClassName="bg-gradient-to-br from-[#1E7FD5] to-[#1565C0]"
-              icon={Layers3}
-              filter="all"
-            />
-            <KpiCard
-              title="Subacoes"
-              value={String(stats.subactionCount)}
-              subtitle={`${stats.inProgress} em execucao`}
-              gradientClassName="bg-gradient-to-br from-[#82C4F8] via-[#1E7FD5] to-[#1565C0]"
-              icon={ListChecks}
-              filter="all"
-            />
-            <KpiCard
-              title="Concluidas"
-              value={String(stats.done)}
-              subtitle={`${stats.pending} pendentes`}
-              gradientClassName="bg-gradient-to-br from-emerald-500 via-teal-500 to-cyan-600"
-              icon={CheckCircle2}
-              filter="done"
-            />
-            <KpiCard
-              title="Em Andamento"
-              value={String(stats.inProgress)}
-              subtitle={`${stats.late} atrasadas`}
-              gradientClassName="bg-gradient-to-br from-amber-500 via-orange-500 to-yellow-500"
-              icon={Clock}
-              filter="progress"
-            />
-            <KpiCard
-              title="Atrasadas"
-              value={String(stats.late)}
-              subtitle={`${stats.critical} criticas`}
-              gradientClassName="bg-gradient-to-br from-rose-500 via-red-500 to-orange-600"
-              icon={AlertTriangle}
-              filter="late"
-            />
-            <KpiCard
-              title="Efetividade"
-              value={`${stats.completion}%`}
-              subtitle={`Media: ${stats.pdcaProgressAverage}%`}
-              gradientClassName="bg-gradient-to-br from-[#08192E] via-[#1E7FD5] to-[#82C4F8]"
-              icon={Gauge}
-              filter="all"
-            />
-          </section>
-        )}
-
-        {activeView === "painel" && (
-          <section className="mt-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-            <div className="flex items-center justify-between gap-4">
-              <div>
-                <h3 className="text-sm font-medium text-slate-700">Progresso Geral do PDCA</h3>
-                <p className="mt-1 text-xs text-slate-400">{stats.done} de {stats.subactionCount} subações concluídas</p>
-              </div>
-              <div className="flex items-center gap-3">
-                <div className="h-3 w-48 rounded-full bg-slate-100 overflow-hidden">
-                  <div
-                    className={`h-full rounded-full transition-all duration-500 ${
-                      stats.completion >= 90 ? "bg-emerald-500" :
-                      stats.completion >= 70 ? "bg-amber-500" :
-                      "bg-rose-500"
-                    }`}
-                    style={{ width: `${stats.completion}%` }}
-                  />
-                </div>
-                <span className={`text-lg font-semibold ${
-                  stats.completion >= 90 ? "text-emerald-600" :
-                  stats.completion >= 70 ? "text-amber-600" :
-                  "text-rose-600"
-                }`}>
-                  {stats.completion}%
-                </span>
-              </div>
-            </div>
-          </section>
-        )}
-
-        {activeView === "painel" && (
-          <section className="mt-6 grid gap-5 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
-            <TableGridPDCA
+          <div className="mt-5">
+            <CommandCenterView
               pdcas={pdcas}
               selectedPdcaId={selectedPdcaId}
               onSelectPdca={setSelectedPdcaId}
               loading={loading}
               localMode={localMode}
-              onSelectSubAction={(subaction) => {
-                setSelectedSubAction(subaction as any);
-              }}
+              logs={logs}
+              formatDate={formatDate}
+              onSelectSubAction={(sub) => setSelectedSubAction(sub)}
             />
-
-            <div className="space-y-5">
-              <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-                <h3 className="text-base font-semibold text-slate-800">Leituras Executivas</h3>
-                <p className="mt-1 text-sm text-slate-400">Síntese dinâmica com base nas subações do portfólio atual.</p>
-                <div className="mt-4 space-y-2 text-sm">
-                  <div className="rounded-xl border border-slate-100 bg-slate-50 px-3 py-2 text-slate-700">
-                    {stats.withEvidence} subações com evidência registrada.
-                  </div>
-                  <div className="rounded-xl border border-slate-100 bg-slate-50 px-3 py-2 text-slate-700">
-                    {stats.inProgress} subações em execução no ciclo atual.
-                  </div>
-                  <div className="rounded-xl border border-slate-100 bg-slate-50 px-3 py-2 text-slate-700">
-                    {stats.pending} subações pendentes para avançar maturidade.
-                  </div>
-                  <div className="rounded-xl border border-[#006AD7]/15 bg-[#006AD7]/5 px-3 py-2 text-[#006AD7] font-medium">
-                    Eficácia global do portfólio: {stats.completion}%.
-                  </div>
-                </div>
-              </section>
-
-              <ImportLogPanel logs={logs} formatDate={formatDate} />
-            </div>
-          </section>
+          </div>
         )}
 
         {activeView === "painel" && (

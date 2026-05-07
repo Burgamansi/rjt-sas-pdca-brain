@@ -272,9 +272,9 @@ export function PersistenciaView({ pdcas, selectedPdcaId, onSelectPdca, onRefres
                       <p className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: COLORS.neon }}>Progresso</p>
                       <span className="text-sm font-bold tabular-nums" style={{ color: COLORS.white }}>{progress}%</span>
                     </div>
-                    <div className="h-2 overflow-hidden rounded-full" style={{ backgroundColor: "#1a2744" }}>
+                    <div className="h-2 overflow-hidden rounded-full" style={{ backgroundColor: "#E2E8F0" }}>
                       <div
-                        className="h-full rounded-full bg-gradient-to-r from-[#1E7FD5] to-[#0066B3] transition-all"
+                        className="h-full rounded-full bg-gradient-to-r from-[#006AD7] to-[#0054AA] transition-all"
                         style={{ width: `${progress}%` }}
                       />
                     </div>
