@@ -100,6 +100,58 @@ async function extractPdfText(buf: Buffer): Promise<string> {
   return extractPdfTextFallback(buf);
 }
 
+// ── OCR via Anthropic API (activates only for scanned/image-only PDFs) ────────
+
+const OCR_TEXT_THRESHOLD = 100;   // chars below which we attempt OCR
+const OCR_MAX_PDF_BYTES  = 19 * 1024 * 1024; // 19 MB — stay under Anthropic 20 MB limit
+
+async function extractTextViaOCR(buf: Buffer): Promise<string> {
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) return "";
+  if (buf.length > OCR_MAX_PDF_BYTES) return "";
+
+  try {
+    const res = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "x-api-key": apiKey,
+        "anthropic-version": "2023-06-01",
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "claude-haiku-4-5-20251001",
+        max_tokens: 4096,
+        messages: [
+          {
+            role: "user",
+            content: [
+              {
+                type: "document",
+                source: {
+                  type: "base64",
+                  media_type: "application/pdf",
+                  data: buf.toString("base64"),
+                },
+              },
+              {
+                type: "text",
+                text: "Extract ALL text content from this document exactly as it appears. Return only the raw extracted text. Preserve all codes, IDs, table values, names, dates, and structure. No commentary or formatting changes.",
+              },
+            ],
+          },
+        ],
+      }),
+    });
+
+    if (!res.ok) return "";
+
+    const data = (await res.json()) as { content?: Array<{ type: string; text?: string }> };
+    return data.content?.find((c) => c.type === "text")?.text ?? "";
+  } catch {
+    return "";
+  }
+}
+
 // ── Row parsing (same logic as DOCX parser) ──────────────────────────────────
 
 function normalizeStatus(raw: string): string {
@@ -342,8 +394,18 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: false, message: "Arquivo não é um PDF válido." }, { status: 422 });
     }
 
-    const text = await extractPdfText(buf);
+    let text = await extractPdfText(buf);
     logErr("TEXT_LEN", text.length);
+
+    // OCR branch: if BT/ET scanner found no usable text, try Anthropic vision OCR
+    if (text.length < OCR_TEXT_THRESHOLD) {
+      logErr("OCR_ATTEMPT", `scanned PDF detected (${text.length} chars), calling Anthropic OCR`);
+      const ocrText = await extractTextViaOCR(buf);
+      logErr("OCR_LEN", ocrText.length);
+      if (ocrText.length >= OCR_TEXT_THRESHOLD) {
+        text = ocrText;
+      }
+    }
 
     // Try pipe-format parser first, then TABELA_MESTRE format
     let rows = parseRows(text);
@@ -396,13 +458,17 @@ function mapComoFazer(idx: number, existing: string): string {
 
     // Could not extract structured rows — return diagnostic info
     const preview = buildPreview(text, file.name);
+    const hasText = text.length > OCR_TEXT_THRESHOLD;
+    const ocrWasAttempted = !hasText && !!process.env.ANTHROPIC_API_KEY;
     return NextResponse.json({
       ok: false,
-      extractedText: text.length > 0,
+      extractedText: hasText,
       preview,
       rowCount: 0,
-      message: text.length > 100
+      message: hasText
         ? "Texto extraído do PDF, mas formato não reconhecido. Verifique se o PDF vem de um arquivo Word/Excel."
+        : ocrWasAttempted
+        ? "OCR executado, mas não foi possível identificar estrutura PDCA no documento escaneado."
         : "Não foi possível extrair texto do PDF. O arquivo pode ser uma imagem escaneada (sem camada de texto).",
       suggestion: "Converta o PDF para DOCX e importe pela opção 'Importar Excel / DOCX'.",
     }, { status: 422 });
