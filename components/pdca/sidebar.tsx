@@ -1,6 +1,6 @@
 "use client";
 
-import { Database, Layers, LayoutDashboard, TrendingUp, UploadCloud, Wifi, WifiOff, X } from "lucide-react";
+import { Database, Layers, LayoutDashboard, PlayCircle, ShieldCheck, TrendingUp, UploadCloud, Wifi, WifiOff, X } from "lucide-react";
 import { useAppState, useFilteredData, PdcaView } from "@/lib/app-state";
 
 type SidebarProps = {
@@ -14,10 +14,12 @@ type SidebarProps = {
 };
 
 const NAV: { label: string; desc: string; icon: typeof LayoutDashboard; view: PdcaView }[] = [
-  { label: "Painel Executivo", desc: "Dashboard e KPIs",   icon: LayoutDashboard, view: "painel" },
-  { label: "Portfolio PDCA",   desc: "Gestão do portfólio", icon: Layers,          view: "portfolio" },
-  { label: "SETUP PDCA",       desc: "Upload e setup",      icon: UploadCloud,     view: "setup" },
-  { label: "Persistência SGQ", desc: "Sincronização",       icon: Database,        view: "persistencia" },
+  { label: "Painel Executivo", desc: "Dashboard e KPIs",        icon: LayoutDashboard, view: "painel" },
+  { label: "Portfolio PDCA",   desc: "Gestão do portfólio",     icon: Layers,          view: "portfolio" },
+  { label: "SETUP PDCA",       desc: "Upload e setup",          icon: UploadCloud,     view: "setup" },
+  { label: "Execução",         desc: "Gestão de execução",      icon: PlayCircle,      view: "execucao" },
+  { label: "Auditoria",        desc: "Controle e conformidade", icon: ShieldCheck,     view: "auditoria" },
+  { label: "Persistência SGQ", desc: "Sincronização",           icon: Database,        view: "persistencia" },
 ];
 
 export function Sidebar({ pdcaCount, subactionCount, doneCount, completion, localMode, isOpen, onClose }: SidebarProps) {

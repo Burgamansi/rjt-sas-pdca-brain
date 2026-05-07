@@ -13,6 +13,8 @@ import { ImportView } from "@/components/pdca/importacao-view";
 import { PersistenciaView } from "@/components/pdca/persistencia-view";
 import { CommandCenterView } from "@/components/pdca/command-center-view";
 import { RightRail } from "@/components/pdca/right-rail";
+import { ExecucaoTab } from "@/components/pdca/execucao-tab";
+import { AuditoriaTab } from "@/components/pdca/auditoria-tab";
 
 type PdcaComputedMetrics = {
   totalSubactions: number;
@@ -372,6 +374,18 @@ export default function Page() {
                 setSelectedSubAction(sub);
               }}
             />
+          </div>
+        )}
+
+        {activeView === "execucao" && (
+          <div className="min-h-[calc(100vh-120px)]">
+            <ExecucaoTab pdcas={pdcas} />
+          </div>
+        )}
+
+        {activeView === "auditoria" && (
+          <div className="min-h-[calc(100vh-120px)]">
+            <AuditoriaTab pdcas={pdcas} />
           </div>
         )}
 
