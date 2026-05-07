@@ -1,22 +1,25 @@
 export const T = {
-  // Backgrounds
-  bg:       "#08192E",
-  surface:  "#0E2539",
-  surface2: "#152E4A",
+  // Workspace (light)
+  bg:       "#F0F4F8",
+  surface:  "#FFFFFF",
+  surface2: "#F8FAFC",
+
+  // Sidebar
+  sidebar: "#21277B",
 
   // Brand
-  primary:      "#1E7FD5",
-  primaryLight: "#82C4F8",
-  primaryGlow:  "rgba(30,127,213,0.18)",
+  primary:      "#006AD7",
+  primaryLight: "#9AD9EA",
+  primaryGlow:  "rgba(0,106,215,0.15)",
 
-  // Borders
-  border:  "rgba(255,255,255,0.07)",
-  borderL: "rgba(255,255,255,0.12)",
+  // Borders (light context)
+  border:  "rgba(0,0,0,0.08)",
+  borderL: "rgba(0,0,0,0.12)",
 
-  // Text
-  text:      "#EEF4FA",
-  textSub:   "#7FA3BE",
-  textMuted: "#4A6880",
+  // Text (dark on light)
+  text:      "#1E293B",
+  textSub:   "#5F83B1",
+  textMuted: "#94A3B8",
 
   // Semantic
   success: "#10B981",

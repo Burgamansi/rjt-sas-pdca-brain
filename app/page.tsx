@@ -270,7 +270,7 @@ export default function Page() {
   }
 
   return (
-    <div className="min-h-screen bg-[#08192E] text-slate-100">
+    <div className="min-h-screen bg-[#F0F4F8] text-slate-900">
       <Sidebar
         pdcaCount={stats.pdcaCount}
         subactionCount={stats.subactionCount}
@@ -303,7 +303,7 @@ export default function Page() {
         />
 
         {message ? (
-          <section className="mt-4 rounded-2xl border border-[#1E7FD5]/25 bg-[#1E7FD5]/10 px-4 py-3 text-sm text-[#82C4F8]">
+          <section className="mt-4 rounded-2xl border border-[#006AD7]/20 bg-[#006AD7]/5 px-4 py-3 text-sm text-[#006AD7]">
             {message}
           </section>
         ) : null}
@@ -368,14 +368,14 @@ export default function Page() {
         )}
 
         {activeView === "painel" && (
-          <section className="mt-6 rounded-2xl border border-[#1E7FD5]/15 bg-[#08192E]/60 p-5">
+          <section className="mt-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
             <div className="flex items-center justify-between gap-4">
               <div>
-                <h3 className="text-sm font-medium text-slate-300">Progresso Geral do PDCA</h3>
-                <p className="mt-1 text-xs text-slate-500">{stats.done} de {stats.subactionCount} subações concluídas</p>
+                <h3 className="text-sm font-medium text-slate-700">Progresso Geral do PDCA</h3>
+                <p className="mt-1 text-xs text-slate-400">{stats.done} de {stats.subactionCount} subações concluídas</p>
               </div>
               <div className="flex items-center gap-3">
-                <div className="h-3 w-48 rounded-full bg-slate-700 overflow-hidden">
+                <div className="h-3 w-48 rounded-full bg-slate-100 overflow-hidden">
                   <div
                     className={`h-full rounded-full transition-all duration-500 ${
                       stats.completion >= 90 ? "bg-emerald-500" :
@@ -386,9 +386,9 @@ export default function Page() {
                   />
                 </div>
                 <span className={`text-lg font-semibold ${
-                  stats.completion >= 90 ? "text-emerald-400" :
-                  stats.completion >= 70 ? "text-amber-400" :
-                  "text-rose-400"
+                  stats.completion >= 90 ? "text-emerald-600" :
+                  stats.completion >= 70 ? "text-amber-600" :
+                  "text-rose-600"
                 }`}>
                   {stats.completion}%
                 </span>
@@ -411,21 +411,21 @@ export default function Page() {
             />
 
             <div className="space-y-5">
-              <section className="rounded-3xl border border-white/10 bg-white/[0.03] p-5 shadow-[0_28px_55px_-35px_rgba(15,23,42,0.9)]">
-                <h3 className="text-lg font-semibold text-slate-100">Leituras Executivas</h3>
-                <p className="mt-1 text-sm text-slate-400">Sintese dinamica com base nas subacoes do portifolio atual.</p>
-                <div className="mt-4 space-y-2 text-sm text-slate-200">
-                  <div className="rounded-xl border border-slate-700/80 bg-slate-900/70 px-3 py-2">
-                    {stats.withEvidence} subacoes com evidencia registrada.
+              <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                <h3 className="text-base font-semibold text-slate-800">Leituras Executivas</h3>
+                <p className="mt-1 text-sm text-slate-400">Síntese dinâmica com base nas subações do portfólio atual.</p>
+                <div className="mt-4 space-y-2 text-sm">
+                  <div className="rounded-xl border border-slate-100 bg-slate-50 px-3 py-2 text-slate-700">
+                    {stats.withEvidence} subações com evidência registrada.
                   </div>
-                  <div className="rounded-xl border border-slate-700/80 bg-slate-900/70 px-3 py-2">
-                    {stats.inProgress} subacoes em execucao no ciclo atual.
+                  <div className="rounded-xl border border-slate-100 bg-slate-50 px-3 py-2 text-slate-700">
+                    {stats.inProgress} subações em execução no ciclo atual.
                   </div>
-                  <div className="rounded-xl border border-slate-700/80 bg-slate-900/70 px-3 py-2">
-                    {stats.pending} subacoes pendentes para avancar maturidade.
+                  <div className="rounded-xl border border-slate-100 bg-slate-50 px-3 py-2 text-slate-700">
+                    {stats.pending} subações pendentes para avançar maturidade.
                   </div>
-                  <div className="rounded-xl border border-slate-700/80 bg-slate-900/70 px-3 py-2">
-                    Eficacia global do portifolio: {stats.completion}%.
+                  <div className="rounded-xl border border-[#006AD7]/15 bg-[#006AD7]/5 px-3 py-2 text-[#006AD7] font-medium">
+                    Eficácia global do portfólio: {stats.completion}%.
                   </div>
                 </div>
               </section>

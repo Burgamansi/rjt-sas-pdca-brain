@@ -425,9 +425,9 @@ export function ImportView({
     <div className="flex flex-col" style={{ minHeight: "100%", backgroundColor: COLORS.bg }}>
 
       {/* ── Top action bar ── */}
-      <div className="flex items-center justify-between border-b border-white/[0.07] px-5 py-3">
+      <div className="flex items-center justify-between border-b border-slate-200 bg-white px-5 py-3 shadow-sm">
         <div>
-          <h1 className="text-sm font-bold tracking-wide text-slate-100">
+          <h1 className="text-sm font-bold tracking-wide text-slate-900">
             PDCA SGQ — SISTEMA DE GESTÃO DA QUALIDADE
           </h1>
           <p className="mt-0.5 text-xs text-slate-500">
@@ -439,7 +439,7 @@ export function ImportView({
         <div className="flex items-center gap-2">
           <button
             onClick={onRefresh}
-            className="flex items-center gap-1.5 rounded-lg border border-white/10 px-3 py-1.5 text-xs font-medium text-slate-400 transition-colors hover:border-white/20 hover:text-slate-200"
+            className="flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-400 transition-colors hover:border-slate-300 hover:text-slate-700"
           >
             <RefreshCw className="h-3.5 w-3.5" />
             Atualizar
@@ -472,20 +472,20 @@ export function ImportView({
       </div>
 
       {/* ── Tab navigation ── */}
-      <div className="flex border-b border-white/[0.06] px-5">
+      <div className="flex border-b border-slate-200 bg-white px-5">
         {tabs.map((tab) => (
           <button
             key={tab.key}
             onClick={() => setActiveTab(tab.key)}
             className={`flex items-center gap-2 border-b-2 px-4 pb-3 pt-3 text-[11px] font-semibold uppercase tracking-widest transition-colors ${
               activeTab === tab.key
-                ? "border-[#1E7FD5] text-[#1E7FD5]"
-                : "border-transparent text-slate-500 hover:border-slate-600 hover:text-slate-300"
+                ? "border-[#006AD7] text-[#006AD7]"
+                : "border-transparent text-slate-400 hover:border-slate-300 hover:text-slate-700"
             }`}
           >
             {tab.label}
             {tab.badge && (
-              <span className="rounded bg-[#1E7FD5]/15 px-1.5 py-0.5 text-[9px] text-[#82C4F8]">
+              <span className="rounded bg-[#006AD7]/10 px-1.5 py-0.5 text-[9px] text-[#006AD7]">
                 {tab.badge}
               </span>
             )}
@@ -504,7 +504,7 @@ export function ImportView({
               {/* Upload drop zone */}
               {currentStep === "upload" && (
                 <div
-                  className="cursor-pointer overflow-hidden rounded-xl border border-[#1E7FD5]/20 bg-[#0E2539]/60"
+                  className="cursor-pointer overflow-hidden rounded-xl border border-[#006AD7]/20 bg-white"
                   onDrop={(e) => {
                     e.preventDefault();
                     const files = Array.from(e.dataTransfer.files).filter(
@@ -517,10 +517,10 @@ export function ImportView({
                   onClick={() => fileInputRef.current?.click()}
                 >
                   <div className="flex flex-col items-center justify-center px-8 py-14">
-                    <div className="mb-4 rounded-full bg-[#1E7FD5]/10 p-4">
-                      <FileSpreadsheet className="h-10 w-10 text-[#1E7FD5]" />
+                    <div className="mb-4 rounded-full bg-[#006AD7]/10 p-4">
+                      <FileSpreadsheet className="h-10 w-10 text-[#006AD7]" />
                     </div>
-                    <p className="text-base font-semibold text-slate-200">
+                    <p className="text-base font-semibold text-slate-700">
                       Arraste os arquivos Excel aqui
                     </p>
                     <p className="mt-1 text-sm text-slate-500">
@@ -540,7 +540,7 @@ export function ImportView({
                     />
                     <button
                       onClick={(ev) => { ev.stopPropagation(); fileInputRef.current?.click(); }}
-                      className="mt-5 rounded-lg bg-[#1E7FD5] px-5 py-2 text-sm font-semibold text-white shadow-[0_0_16px_rgba(30,127,213,0.3)] transition-all hover:bg-[#82C4F8]/80"
+                      className="mt-5 rounded-lg bg-[#006AD7] px-5 py-2 text-sm font-semibold text-white shadow-[0_0_16px_rgba(30,127,213,0.3)] transition-all hover:bg-[#5F83B1]/80"
                     >
                       Selecionar Excel
                     </button>
@@ -551,12 +551,12 @@ export function ImportView({
 
               {/* File processing status */}
               {currentStep === "validacao" && fileResults.length > 0 && (
-                <div className="rounded-xl border border-white/10 bg-[#0E2539]/60 p-5">
+                <div className="rounded-xl border border-slate-200 bg-white p-5">
                   <div className="mb-4 flex items-center justify-between">
-                    <h3 className="text-sm font-semibold text-slate-200">
+                    <h3 className="text-sm font-semibold text-slate-700">
                       Processando {fileResults.length} arquivo{fileResults.length > 1 ? "s" : ""}…
                     </h3>
-                    <button onClick={reset} className="text-xs text-[#1E7FD5] hover:underline">
+                    <button onClick={reset} className="text-xs text-[#006AD7] hover:underline">
                       Cancelar
                     </button>
                   </div>
@@ -564,13 +564,13 @@ export function ImportView({
                     {fileResults.map((fr, i) => (
                       <div
                         key={i}
-                        className="flex items-center gap-3 rounded-lg border border-white/[0.06] bg-white/[0.02] p-3"
+                        className="flex items-center gap-3 rounded-lg border border-slate-200 bg-slate-50 p-3"
                       >
-                        {fr.status === "parsing" && <RefreshCw className="h-4 w-4 shrink-0 animate-spin text-[#1E7FD5]" />}
+                        {fr.status === "parsing" && <RefreshCw className="h-4 w-4 shrink-0 animate-spin text-[#006AD7]" />}
                         {fr.status === "ok"      && <CheckCircle className="h-4 w-4 shrink-0 text-emerald-400" />}
                         {fr.status === "error"   && <XCircle     className="h-4 w-4 shrink-0 text-rose-400" />}
                         <div className="min-w-0 flex-1">
-                          <p className="truncate text-xs font-medium text-slate-200">{fr.file.name}</p>
+                          <p className="truncate text-xs font-medium text-slate-700">{fr.file.name}</p>
                           {fr.status === "parsing" && <p className="text-[11px] text-slate-500">Lendo arquivo…</p>}
                           {fr.status === "ok"      && <p className="text-[11px] text-emerald-400">{fr.rows.length} registros</p>}
                           {fr.status === "error"   && fr.errors.map((err, j) => (
@@ -588,17 +588,17 @@ export function ImportView({
 
               {/* Preview table */}
               {(currentStep === "previa" || currentStep === "mapeamento") && parsedRows.length > 0 && (
-                <div className="overflow-hidden rounded-xl border border-white/10">
-                  <div className="flex items-center justify-between border-b border-white/10 bg-white/[0.03] px-4 py-3">
+                <div className="overflow-hidden rounded-xl border border-slate-200">
+                  <div className="flex items-center justify-between border-b border-slate-200 bg-slate-50 px-4 py-3">
                     <div>
-                      <h3 className="text-sm font-semibold text-slate-200">Prévia dos Dados</h3>
+                      <h3 className="text-sm font-semibold text-slate-700">Prévia dos Dados</h3>
                       <p className="text-xs text-slate-500">{parsedRows.length} registros detectados</p>
                     </div>
                   </div>
                   <div className="overflow-x-auto">
                     <table className="w-full text-xs">
                       <thead>
-                        <tr className="border-b border-white/[0.06] bg-white/[0.02]">
+                        <tr className="border-b border-slate-200 bg-slate-50">
                           {["PDCA", "FASE", "AÇÃO", "SUBAÇÃO", "RESPONSÁVEL", "STATUS"].map((h) => (
                             <th
                               key={h}
@@ -613,9 +613,9 @@ export function ImportView({
                         {parsedRows.slice(0, 10).map((row, i) => (
                           <tr
                             key={i}
-                            className="border-b border-white/[0.04] transition-colors hover:bg-white/[0.02]"
+                            className="border-b border-slate-100 transition-colors hover:bg-slate-50"
                           >
-                            <td className="px-3 py-2 font-mono text-[10px] text-[#82C4F8]">{row.pdca}</td>
+                            <td className="px-3 py-2 font-mono text-[10px] text-[#5F83B1]">{row.pdca}</td>
                             <td className="px-3 py-2">
                               <span className={`rounded px-1.5 py-0.5 text-[10px] font-semibold text-white ${faseColors[row.fase].bg}`}>
                                 {faseLabels[row.fase]}
@@ -625,7 +625,7 @@ export function ImportView({
                             <td className="max-w-[150px] truncate px-3 py-2 text-slate-300">{row.subacao}</td>
                             <td className="px-3 py-2 text-slate-500">{row.responsavel || "—"}</td>
                             <td className="px-3 py-2">
-                              <span className="rounded bg-slate-700/60 px-1.5 py-0.5 text-[10px] text-slate-400">
+                              <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] text-slate-500">
                                 {row.status}
                               </span>
                             </td>
@@ -635,7 +635,7 @@ export function ImportView({
                     </table>
                   </div>
                   {parsedRows.length > 10 && (
-                    <p className="border-t border-white/[0.04] px-4 py-2 text-[11px] text-slate-600">
+                    <p className="border-t border-slate-100 px-4 py-2 text-[11px] text-slate-600">
                       Mostrando 10 de {parsedRows.length} registros
                     </p>
                   )}
@@ -644,7 +644,7 @@ export function ImportView({
 
               {/* Import action bar */}
               {(currentStep === "previa" || currentStep === "mapeamento") && parsedRows.length > 0 && (
-                <div className="flex items-center justify-between rounded-xl border border-white/10 bg-white/[0.02] px-4 py-3">
+                <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
                   <button
                     onClick={reset}
                     className="flex items-center gap-1.5 text-xs text-slate-500 transition-colors hover:text-slate-300"
@@ -654,7 +654,7 @@ export function ImportView({
                   <button
                     onClick={handleImport}
                     disabled={importing}
-                    className="flex items-center gap-1.5 rounded-lg bg-[#1E7FD5] px-4 py-2 text-xs font-semibold text-white shadow-[0_0_14px_rgba(30,127,213,0.25)] transition-all hover:bg-[#82C4F8]/80 disabled:opacity-50"
+                    className="flex items-center gap-1.5 rounded-lg bg-[#006AD7] px-4 py-2 text-xs font-semibold text-white shadow-[0_0_14px_rgba(30,127,213,0.25)] transition-all hover:bg-[#5F83B1]/80 disabled:opacity-50"
                   >
                     <Save className="h-3.5 w-3.5" />
                     {importing ? "Importando…" : `Importar ${parsedRows.length} registros`}
@@ -694,7 +694,7 @@ export function ImportView({
                   <div className="flex items-center gap-3">
                     <CheckCircle className="h-5 w-5 text-emerald-400" />
                     <div>
-                      <p className="text-sm font-semibold text-slate-200">Importação concluída!</p>
+                      <p className="text-sm font-semibold text-slate-700">Importação concluída!</p>
                       <p className="text-xs text-slate-500">
                         {parsedRows.length} registros sincronizados com sucesso.
                       </p>
@@ -709,8 +709,8 @@ export function ImportView({
 
               {/* Hierarchy tree — shown when PDCAs already loaded */}
               {pdcas.length > 0 && (
-                <div className="overflow-hidden rounded-xl border border-white/10">
-                  <div className="border-b border-white/[0.06] px-4 py-3">
+                <div className="overflow-hidden rounded-xl border border-slate-200">
+                  <div className="border-b border-slate-200 px-4 py-3">
                     <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400">
                       PDCAs Carregados
                     </h3>
@@ -722,8 +722,8 @@ export function ImportView({
                         .map((ph) => ({ phase: ph, count: rows.filter((r) => r.phase === ph).length }))
                         .filter((x) => x.count > 0);
                       return (
-                        <div key={p.id} className="border-b border-white/[0.04] px-4 py-3 last:border-0">
-                          <p className="font-mono text-[11px] font-semibold text-[#82C4F8]">{p.id}</p>
+                        <div key={p.id} className="border-b border-slate-100 px-4 py-3 last:border-0">
+                          <p className="font-mono text-[11px] font-semibold text-[#5F83B1]">{p.id}</p>
                           <p className="mt-0.5 truncate text-xs text-slate-500">{p.titulo || "—"}</p>
                           <div className="mt-2 flex flex-wrap gap-1">
                             {phases.map(({ phase, count }) => (
@@ -739,7 +739,7 @@ export function ImportView({
                       );
                     })}
                   </div>
-                  <div className="border-t border-white/[0.04] px-4 py-2.5">
+                  <div className="border-t border-slate-100 px-4 py-2.5">
                     <p className="text-[11px] text-slate-600">{totalSubactions} tarefas no total</p>
                   </div>
                 </div>
@@ -747,13 +747,13 @@ export function ImportView({
 
               {/* Files stats */}
               {fileResults.length > 0 && (
-                <div className="rounded-xl border border-white/10 bg-white/[0.02] p-4">
+                <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
                   <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-400">
                     Arquivos
                   </h3>
                   <div className="grid grid-cols-3 gap-3 text-center">
                     {[
-                      { label: "Total", value: fileResults.length,                             color: "text-[#82C4F8]" },
+                      { label: "Total", value: fileResults.length,                             color: "text-[#5F83B1]" },
                       { label: "OK",    value: fileResults.filter((r) => r.status === "ok").length,    color: "text-emerald-400" },
                       { label: "Erro",  value: fileResults.filter((r) => r.status === "error").length, color: "text-rose-400" },
                     ].map((s) => (
@@ -764,15 +764,15 @@ export function ImportView({
                     ))}
                   </div>
                   {parsedRows.length > 0 && (
-                    <div className="mt-3 grid grid-cols-2 gap-3 border-t border-white/[0.04] pt-3 text-center">
+                    <div className="mt-3 grid grid-cols-2 gap-3 border-t border-slate-100 pt-3 text-center">
                       <div>
-                        <p className="text-lg font-bold text-[#82C4F8]">
+                        <p className="text-lg font-bold text-[#5F83B1]">
                           {new Set(parsedRows.map((r) => r.pdca)).size}
                         </p>
                         <p className="text-[10px] uppercase text-slate-600">PDCAs</p>
                       </div>
                       <div>
-                        <p className="text-lg font-bold text-[#82C4F8]">{parsedRows.length}</p>
+                        <p className="text-lg font-bold text-[#5F83B1]">{parsedRows.length}</p>
                         <p className="text-[10px] uppercase text-slate-600">Subações</p>
                       </div>
                     </div>
@@ -781,7 +781,7 @@ export function ImportView({
               )}
 
               {/* Validation */}
-              <div className="rounded-xl border border-white/10 bg-white/[0.02] p-4">
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
                 <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-400">
                   Validação
                 </h3>
@@ -806,7 +806,7 @@ export function ImportView({
               </div>
 
               {/* Insights */}
-              <div className="rounded-xl border border-white/10 bg-white/[0.02] p-4">
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
                 <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-400">
                   Insights
                 </h3>
@@ -833,9 +833,9 @@ export function ImportView({
                       <span className={`text-sm font-bold ${s.color}`}>{s.value}</span>
                     </div>
                   ))}
-                  <div className="flex items-center justify-between border-t border-white/[0.04] pt-3">
+                  <div className="flex items-center justify-between border-t border-slate-100 pt-3">
                     <span className="text-xs font-medium text-slate-400">Efetividade</span>
-                    <span className="text-base font-bold text-[#1E7FD5]">{completionPct}%</span>
+                    <span className="text-base font-bold text-[#006AD7]">{completionPct}%</span>
                   </div>
                 </div>
               </div>
@@ -851,7 +851,7 @@ export function ImportView({
               {/* PDF upload zone */}
               {currentStep === "upload" && (
                 <div
-                  className="cursor-pointer overflow-hidden rounded-xl border border-[#1E7FD5]/20 bg-[#0E2539]/60"
+                  className="cursor-pointer overflow-hidden rounded-xl border border-[#006AD7]/20 bg-white"
                   onDrop={(e) => {
                     e.preventDefault();
                     const files = Array.from(e.dataTransfer.files).filter((f) =>
@@ -864,10 +864,10 @@ export function ImportView({
                   onClick={() => pdfInputRef.current?.click()}
                 >
                   <div className="flex flex-col items-center justify-center px-8 py-14">
-                    <div className="mb-4 rounded-full bg-[#1E7FD5]/10 p-4">
-                      <FileText className="h-10 w-10 text-[#82C4F8]" />
+                    <div className="mb-4 rounded-full bg-[#006AD7]/10 p-4">
+                      <FileText className="h-10 w-10 text-[#5F83B1]" />
                     </div>
-                    <p className="text-base font-semibold text-slate-200">
+                    <p className="text-base font-semibold text-slate-700">
                       Arraste os PDFs de subações aqui
                     </p>
                     <p className="mt-1 text-sm text-slate-500">
@@ -887,7 +887,7 @@ export function ImportView({
                     />
                     <button
                       onClick={(ev) => { ev.stopPropagation(); pdfInputRef.current?.click(); }}
-                      className="mt-5 rounded-lg bg-[#1E7FD5]/80 px-5 py-2 text-sm font-semibold text-white shadow-[0_0_16px_rgba(30,127,213,0.25)] transition-all hover:bg-[#1E7FD5]"
+                      className="mt-5 rounded-lg bg-[#006AD7]/80 px-5 py-2 text-sm font-semibold text-white shadow-[0_0_16px_rgba(30,127,213,0.25)] transition-all hover:bg-[#006AD7]"
                     >
                       Selecionar PDFs
                     </button>
@@ -900,12 +900,12 @@ export function ImportView({
 
               {/* PDF processing status */}
               {currentStep === "validacao" && pdfResults.length > 0 && (
-                <div className="rounded-xl border border-white/10 bg-[#0E2539]/60 p-5">
+                <div className="rounded-xl border border-slate-200 bg-white p-5">
                   <div className="mb-4 flex items-center justify-between">
-                    <h3 className="text-sm font-semibold text-slate-200">
+                    <h3 className="text-sm font-semibold text-slate-700">
                       Processando {pdfResults.length} arquivo{pdfResults.length > 1 ? "s" : ""}…
                     </h3>
-                    <button onClick={reset} className="text-xs text-[#1E7FD5] hover:underline">
+                    <button onClick={reset} className="text-xs text-[#006AD7] hover:underline">
                       Cancelar
                     </button>
                   </div>
@@ -913,13 +913,13 @@ export function ImportView({
                     {pdfResults.map((pr, i) => (
                       <div
                         key={i}
-                        className="flex items-center gap-3 rounded-lg border border-white/[0.06] bg-white/[0.02] p-3"
+                        className="flex items-center gap-3 rounded-lg border border-slate-200 bg-slate-50 p-3"
                       >
-                        {pr.status === "processing" && <RefreshCw className="h-4 w-4 shrink-0 animate-spin text-[#1E7FD5]" />}
+                        {pr.status === "processing" && <RefreshCw className="h-4 w-4 shrink-0 animate-spin text-[#006AD7]" />}
                         {pr.status === "ok"         && <CheckCircle className="h-4 w-4 shrink-0 text-emerald-400" />}
                         {pr.status === "error"      && <XCircle     className="h-4 w-4 shrink-0 text-rose-400" />}
                         <div className="min-w-0 flex-1">
-                          <p className="truncate text-xs font-medium text-slate-200">{pr.file.name}</p>
+                          <p className="truncate text-xs font-medium text-slate-700">{pr.file.name}</p>
                           {pr.status === "processing" && (
                             <p className="text-[11px] text-slate-500">Extraindo subações…</p>
                           )}
@@ -969,9 +969,9 @@ export function ImportView({
               {/* PDF preview table */}
               {(currentStep === "previa" || currentStep === "mapeamento") &&
                 pdfResults.some((r) => r.status === "ok") && (
-                <div className="overflow-hidden rounded-xl border border-white/10">
-                  <div className="border-b border-white/10 bg-white/[0.03] px-4 py-3">
-                    <h3 className="text-sm font-semibold text-slate-200">Prévia das Subações Extraídas</h3>
+                <div className="overflow-hidden rounded-xl border border-slate-200">
+                  <div className="border-b border-slate-200 bg-slate-50 px-4 py-3">
+                    <h3 className="text-sm font-semibold text-slate-700">Prévia das Subações Extraídas</h3>
                     <p className="text-xs text-slate-500">
                       {pdfResults.filter((r) => r.status === "ok").reduce((s, r) => s + r.rowCount, 0)} subações em{" "}
                       {pdfResults.filter((r) => r.status === "ok").length} PDF
@@ -981,7 +981,7 @@ export function ImportView({
                   <div className="overflow-x-auto">
                     <table className="w-full text-xs">
                       <thead>
-                        <tr className="border-b border-white/[0.06] bg-white/[0.02]">
+                        <tr className="border-b border-slate-200 bg-slate-50">
                           {["PDCA", "AÇÃO", "SUBAÇÃO", "RESPONSÁVEL", "PRAZO", "COMO FAZER"].map((h) => (
                             <th
                               key={h}
@@ -1013,9 +1013,9 @@ export function ImportView({
                           .map((row, i) => (
                             <tr
                               key={i}
-                              className="border-b border-white/[0.04] transition-colors hover:bg-white/[0.02]"
+                              className="border-b border-slate-100 transition-colors hover:bg-slate-50"
                             >
-                              <td className="px-3 py-2 font-mono text-[10px] text-[#82C4F8]">{row.pdca}</td>
+                              <td className="px-3 py-2 font-mono text-[10px] text-[#5F83B1]">{row.pdca}</td>
                               <td className="max-w-[120px] truncate px-3 py-2 text-slate-400">{row.acao}</td>
                               <td className="max-w-[140px] truncate px-3 py-2 text-slate-300">{row.subacao}</td>
                               <td className="px-3 py-2 text-slate-500">{row.responsavel || "—"}</td>
@@ -1032,7 +1032,7 @@ export function ImportView({
               {/* PDF import action bar */}
               {(currentStep === "previa" || currentStep === "mapeamento") &&
                 pdfResults.some((r) => r.status === "ok") && (
-                <div className="flex items-center justify-between rounded-xl border border-white/10 bg-white/[0.02] px-4 py-3">
+                <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
                   <button
                     onClick={reset}
                     className="flex items-center gap-1.5 text-xs text-slate-500 transition-colors hover:text-slate-300"
@@ -1042,7 +1042,7 @@ export function ImportView({
                   <button
                     onClick={handlePdfImport}
                     disabled={importing}
-                    className="flex items-center gap-1.5 rounded-lg bg-[#1E7FD5] px-4 py-2 text-xs font-semibold text-white shadow-[0_0_14px_rgba(30,127,213,0.25)] transition-all hover:bg-[#82C4F8]/80 disabled:opacity-50"
+                    className="flex items-center gap-1.5 rounded-lg bg-[#006AD7] px-4 py-2 text-xs font-semibold text-white shadow-[0_0_14px_rgba(30,127,213,0.25)] transition-all hover:bg-[#5F83B1]/80 disabled:opacity-50"
                   >
                     <Save className="h-3.5 w-3.5" />
                     {importing
@@ -1058,7 +1058,7 @@ export function ImportView({
                   <div className="flex items-center gap-3">
                     <CheckCircle className="h-5 w-5 text-emerald-400" />
                     <div>
-                      <p className="text-sm font-semibold text-slate-200">Importação concluída!</p>
+                      <p className="text-sm font-semibold text-slate-700">Importação concluída!</p>
                       <p className="text-xs text-slate-500">
                         {pdfResults.filter((r) => r.status === "ok").reduce((s, r) => s + r.rowCount, 0)} subações sincronizadas.
                       </p>
@@ -1070,7 +1070,7 @@ export function ImportView({
 
             {/* ── PDF sidebar ── */}
             <div className="space-y-4">
-              <div className="rounded-xl border border-white/10 bg-white/[0.02] p-4">
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
                 <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-400">
                   PDFs Processados
                 </h3>
@@ -1080,7 +1080,7 @@ export function ImportView({
                   <>
                     <div className="grid grid-cols-3 gap-2 text-center">
                       {[
-                        { label: "Total", value: pdfResults.length,                              color: "text-[#82C4F8]" },
+                        { label: "Total", value: pdfResults.length,                              color: "text-[#5F83B1]" },
                         { label: "OK",    value: pdfResults.filter((r) => r.status === "ok").length,    color: "text-emerald-400" },
                         { label: "Erro",  value: pdfResults.filter((r) => r.status === "error").length, color: "text-rose-400" },
                       ].map((s) => (
@@ -1099,11 +1099,11 @@ export function ImportView({
                 )}
               </div>
 
-              <div className="rounded-xl border border-white/10 bg-white/[0.02] p-4 text-xs text-slate-600">
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-xs text-slate-600">
                 <p className="mb-1.5 font-semibold text-slate-500">Sobre o parser PDF</p>
                 <p>
                   Detecta blocos{" "}
-                  <code className="rounded bg-white/[0.05] px-1 py-0.5 font-mono text-[#82C4F8]">
+                  <code className="rounded bg-white/[0.05] px-1 py-0.5 font-mono text-[#5F83B1]">
                     ACTION: XX.XX
                   </code>{" "}
                   para correspondência determinística com IDs do PDCA importado via Excel.

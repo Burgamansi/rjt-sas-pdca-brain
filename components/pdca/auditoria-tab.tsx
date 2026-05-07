@@ -104,7 +104,7 @@ export function AuditoriaTab({ pdcas }: AuditoriaTabProps) {
           {
             label: "Total Evidências",
             value: evidences.length,
-            grad: "from-[#1E7FD5] to-[#1565C0]",
+            grad: "from-[#006AD7] to-[#0054AA]",
             Icon: FileText,
           },
           {
@@ -167,10 +167,10 @@ export function AuditoriaTab({ pdcas }: AuditoriaTabProps) {
       )}
 
       {/* Evidence table */}
-      <div className="overflow-hidden rounded-xl border border-white/10">
-        <div className="flex items-center justify-between border-b border-white/10 bg-white/[0.03] px-4 py-3">
+      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+        <div className="flex items-center justify-between border-b border-slate-200 bg-slate-50 px-4 py-3">
           <div>
-            <h3 className="text-sm font-semibold text-slate-200">Registro de Evidências</h3>
+            <h3 className="text-sm font-semibold text-slate-800">Registro de Evidências</h3>
             <p className="mt-0.5 text-xs text-slate-500">
               Cadeia de custódia completa — PDCA → Ação → Subação → Evidência
             </p>
@@ -197,7 +197,7 @@ export function AuditoriaTab({ pdcas }: AuditoriaTabProps) {
           <div className="overflow-x-auto">
             <table className="w-full text-xs">
               <thead>
-                <tr className="border-b border-white/10 bg-white/[0.02]">
+                <tr className="border-b border-slate-200 bg-slate-50">
                   {[
                     "PDCA",
                     "SUBAÇÃO",
@@ -222,8 +222,8 @@ export function AuditoriaTab({ pdcas }: AuditoriaTabProps) {
                 {evidences.map((ev, idx) => (
                   <tr
                     key={ev.id}
-                    className={`border-b border-white/[0.04] transition-colors hover:bg-white/[0.025] ${
-                      idx % 2 !== 0 ? "bg-white/[0.015]" : ""
+                    className={`border-b border-slate-100 transition-colors hover:bg-slate-50 ${
+                      idx % 2 !== 0 ? "bg-slate-50/60" : ""
                     }`}
                   >
                     <td className="px-3 py-2.5 font-mono text-[10px] text-slate-500">
@@ -233,7 +233,7 @@ export function AuditoriaTab({ pdcas }: AuditoriaTabProps) {
                       {ev.sub_action_id}
                     </td>
                     <td className="px-3 py-2.5">
-                      <span className="flex items-center gap-1.5 text-slate-200">
+                      <span className="flex items-center gap-1.5 text-slate-800">
                         <span>{fileTypeIcon(ev.file_type)}</span>
                         <span className="max-w-[140px] truncate" title={ev.file_name}>
                           {ev.file_name}
@@ -270,7 +270,7 @@ export function AuditoriaTab({ pdcas }: AuditoriaTabProps) {
                           href={ev.file_url}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="text-[#1E7FD5] transition-colors hover:text-[#82C4F8]"
+                          className="text-[#006AD7] transition-colors hover:text-[#9AD9EA]"
                           title="Abrir evidência"
                         >
                           <ExternalLink className="h-3.5 w-3.5" />
@@ -286,7 +286,7 @@ export function AuditoriaTab({ pdcas }: AuditoriaTabProps) {
       </div>
 
       {/* Traceability note */}
-      <div className="rounded-xl border border-white/5 bg-white/[0.02] px-4 py-3 text-xs text-slate-600">
+      <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs text-slate-500">
         <span className="font-semibold text-slate-500">ISO 9001:2015 — Cláusula 7.5.3</span>
         {" "}Controle de informação documentada. Versão completa com hash SHA-256 e rastreabilidade por UUID disponível
         após a aplicação das migrações Phase 1.

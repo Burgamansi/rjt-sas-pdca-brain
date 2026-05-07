@@ -4,7 +4,10 @@
       "Bash(npm run *)",
       "Bash(node -e ' *)",
       "Bash(node -e \"const p = require\\('./package.json'\\); console.log\\(JSON.stringify\\({deps: p.dependencies, dev: p.devDependencies}, null, 2\\)\\)\")",
-      "Bash(node -e \"const d=require\\('fs'\\).readFileSync\\('/dev/stdin','utf8'\\); const p=JSON.parse\\(d\\); console.log\\('deps:', JSON.stringify\\({...p.dependencies,...p.devDependencies}, null, 2\\)\\)\")"
+      "Bash(node -e \"const d=require\\('fs'\\).readFileSync\\('/dev/stdin','utf8'\\); const p=JSON.parse\\(d\\); console.log\\('deps:', JSON.stringify\\({...p.dependencies,...p.devDependencies}, null, 2\\)\\)\")",
+      "Bash(dir \"r:\\\\BURGA-VAUL\\\\VAULT_RJT\\\\RJT-SAAS_projects\\\\backup-Antigravity\\\\RJT-SAS-PDCA\\\\lib\\\\v2\")",
+      "Bash(dir \"r:\\\\BURGA-VAUL\\\\VAULT_RJT\\\\RJT-SAAS_projects\\\\backup-Antigravity\\\\RJT-SAS-PDCA\\\\supabase\\\\migrations\" /b /o:n)",
+      "Bash(npx tsc *)"
     ]
   }
 }

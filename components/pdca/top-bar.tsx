@@ -57,13 +57,13 @@ export function TopBar({ importing, loading, localMode, onRefresh, onOpenImport,
 
   return (
     <header className="space-y-2">
-      <div className="rounded-2xl border border-[#1E7FD5]/15 bg-[#08192E]/85 px-4 py-3 shadow-[0_4px_20px_-8px_rgba(0,0,0,0.5)] backdrop-blur-sm">
+      <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
         <div className="flex items-center gap-2">
 
           {/* Hamburger — só no mobile */}
           <button
             onClick={onOpenSidebar}
-            className="lg:hidden flex-shrink-0 rounded-xl border border-[#1E7FD5]/20 bg-[#08192E]/60 p-2 text-slate-400 hover:text-white transition-colors"
+            className="lg:hidden flex-shrink-0 rounded-xl border border-slate-200 bg-slate-50 p-2 text-slate-500 hover:text-slate-800 transition-colors"
             aria-label="Abrir menu"
           >
             <Menu className="h-5 w-5" />
@@ -77,12 +77,12 @@ export function TopBar({ importing, loading, localMode, onRefresh, onOpenImport,
               placeholder="Buscar subações, responsáveis..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full rounded-xl border border-[#1E7FD5]/20 bg-[#08192E]/60 py-2 pl-9 pr-9 text-sm text-white placeholder:text-slate-500 focus:border-cyan-500/60 focus:outline-none focus:ring-1 focus:ring-cyan-500/30 transition-all"
+              className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2 pl-9 pr-9 text-sm text-slate-800 placeholder:text-slate-400 focus:border-[#006AD7]/50 focus:outline-none focus:ring-1 focus:ring-[#006AD7]/20 transition-all"
             />
             {searchTerm && (
               <button
                 onClick={() => setSearchTerm("")}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-[#82C4F8]/50 hover:text-[#82C4F8] transition-colors"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
               >
                 <X className="h-3.5 w-3.5" />
               </button>
@@ -95,7 +95,7 @@ export function TopBar({ importing, loading, localMode, onRefresh, onOpenImport,
               onClick={onRefresh}
               disabled={loading}
               type="button"
-              className="inline-flex items-center gap-2 rounded-xl border border-[#1E7FD5]/20 bg-[#08192E]/60 px-3 py-2 text-sm font-medium text-slate-300 transition-all hover:border-[#1E7FD5]/40 hover:bg-[#08192E] hover:text-white disabled:opacity-40"
+              className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-600 transition-all hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900 disabled:opacity-40"
             >
               <RefreshCcw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
               <span className="hidden sm:inline">Atualizar</span>
@@ -104,7 +104,7 @@ export function TopBar({ importing, loading, localMode, onRefresh, onOpenImport,
               onClick={onOpenImport}
               disabled={importing}
               type="button"
-              className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#1E7FD5] to-[#0066B3] px-3 py-2 text-sm font-semibold text-white shadow-[0_0_18px_rgba(30,127,213,0.3)] transition-all hover:from-[#82C4F8] hover:to-[#1E7FD5] disabled:opacity-40"
+              className="inline-flex items-center gap-2 rounded-xl bg-[#006AD7] px-3 py-2 text-sm font-semibold text-white shadow-[0_2px_8px_rgba(0,106,215,0.3)] transition-all hover:bg-[#0059B3] disabled:opacity-40"
             >
               <Upload className="h-4 w-4 flex-shrink-0" />
               <span className="hidden sm:inline">{importing ? "Importando..." : "Importar"}</span>
@@ -117,7 +117,7 @@ export function TopBar({ importing, loading, localMode, onRefresh, onOpenImport,
           <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
             <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-600">Filtros:</span>
             {searchTerm && (
-              <span className="inline-flex items-center gap-1 rounded-full border border-cyan-500/30 bg-cyan-500/10 px-2.5 py-0.5 text-xs font-medium text-cyan-300">
+              <span className="inline-flex items-center gap-1 rounded-full border border-[#006AD7]/25 bg-[#006AD7]/8 px-2.5 py-0.5 text-xs font-medium text-[#006AD7]">
                 &ldquo;{searchTerm}&rdquo;
                 <button onClick={() => setSearchTerm("")} className="ml-0.5 rounded-full hover:text-white">
                   <X className="h-3 w-3" />
@@ -147,7 +147,7 @@ export function TopBar({ importing, loading, localMode, onRefresh, onOpenImport,
 
       {/* Modo local banner */}
       {localMode && (
-        <div className="rounded-xl border border-amber-500/25 bg-amber-500/8 px-4 py-2 text-xs text-amber-300">
+        <div className="rounded-xl border border-amber-300/50 bg-amber-50 px-4 py-2 text-xs text-amber-700">
           ⚡ Modo local ativo — dados não são persistidos no Supabase. Importe um Excel para começar.
         </div>
       )}

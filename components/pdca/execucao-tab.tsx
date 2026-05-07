@@ -95,7 +95,7 @@ export function ExecucaoTab({ pdcas }: ExecucaoTabProps) {
         {/* KPI row */}
         <div className="grid grid-cols-5 gap-3">
           {([
-            { label: "Total Tarefas",  value: total,    grad: "from-[#1E7FD5] to-[#1565C0]" },
+            { label: "Total Tarefas",  value: total,    grad: "from-[#006AD7] to-[#0054AA]" },
             { label: "Concluídas",     value: done,     grad: "from-emerald-600 to-teal-700" },
             { label: "Em Execução",    value: inProgress, grad: "from-amber-500 to-orange-600" },
             { label: "Atrasadas",      value: late,     grad: "from-rose-600 to-red-700" },
@@ -110,15 +110,15 @@ export function ExecucaoTab({ pdcas }: ExecucaoTabProps) {
 
         {/* Filter bar */}
         <div className="flex flex-wrap items-center gap-2">
-          <div className="flex items-center gap-0.5 rounded-lg border border-white/10 bg-white/[0.03] p-1">
+          <div className="flex items-center gap-0.5 rounded-lg border border-slate-200 bg-slate-50 p-1">
             {(["all", "plan", "do", "check", "act"] as const).map((ph) => (
               <button
                 key={ph}
                 onClick={() => setPhaseFilter(ph)}
                 className={`rounded-md px-3 py-1 text-xs font-semibold transition-all ${
                   phaseFilter === ph
-                    ? "bg-[#1E7FD5] text-white shadow"
-                    : "text-slate-400 hover:text-slate-200"
+                    ? "bg-[#006AD7] text-white shadow"
+                    : "text-slate-500 hover:text-slate-800"
                 }`}
               >
                 {ph === "all" ? "TODOS" : ph.toUpperCase()}
@@ -129,7 +129,7 @@ export function ExecucaoTab({ pdcas }: ExecucaoTabProps) {
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="rounded-lg border border-white/10 bg-[#0E2539] px-3 py-1.5 text-xs text-slate-300 focus:outline-none focus:border-[#1E7FD5]/50"
+            className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-700 focus:outline-none focus:border-[#006AD7]/50"
           >
             {STATUS_FILTERS.map((s) => (
               <option key={s.key} value={s.key}>{s.label}</option>
@@ -140,27 +140,27 @@ export function ExecucaoTab({ pdcas }: ExecucaoTabProps) {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Buscar tarefa, ação, responsável..."
-            className="flex-1 min-w-44 rounded-lg border border-white/10 bg-[#0E2539] px-3 py-1.5 text-xs text-slate-300 placeholder:text-slate-600 focus:outline-none focus:border-[#1E7FD5]/40"
+            className="flex-1 min-w-44 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-700 placeholder:text-slate-400 focus:outline-none focus:border-[#006AD7]/40"
           />
 
-          <span className="text-xs text-slate-600 shrink-0">
+          <span className="text-xs text-slate-400 shrink-0">
             {filtered.length}/{total} tarefa{filtered.length !== 1 ? "s" : ""}
           </span>
         </div>
 
         {/* Grid */}
         {pdcas.length === 0 ? (
-          <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-white/10 py-16 text-slate-600">
+          <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-slate-200 py-16 text-slate-400">
             <Layers3 className="mb-3 h-10 w-10 opacity-20" />
             <p className="text-sm">Nenhum PDCA carregado.</p>
             <p className="mt-1 text-xs">Importe uma planilha na aba SETUP EXCEL.</p>
           </div>
         ) : (
-          <div className="overflow-hidden rounded-xl border border-white/10">
+          <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
             <div className="overflow-x-auto">
               <table className="w-full text-xs">
                 <thead>
-                  <tr className="border-b border-white/10 bg-white/[0.04]">
+                  <tr className="border-b border-slate-200 bg-slate-50">
                     {["ID", "PDCA", "FASE", "AÇÃO", "TAREFA", "RESPONSÁVEL", "PRAZO", "STATUS", ""].map((h) => (
                       <th key={h} className="px-3 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-slate-500">
                         {h}
@@ -178,16 +178,16 @@ export function ExecucaoTab({ pdcas }: ExecucaoTabProps) {
                       <tr
                         key={`${row.pdcaId}-${row.acaoId}-${row.subacaoId}-${idx}`}
                         onClick={() => handleRowClick(row)}
-                        className={`cursor-pointer border-b border-white/[0.04] transition-colors ${
+                        className={`cursor-pointer border-b border-slate-100 transition-colors ${
                           isSelected
-                            ? "bg-[#1E7FD5]/12"
+                            ? "bg-[#006AD7]/6"
                             : idx % 2 === 0
-                            ? "hover:bg-white/[0.025]"
-                            : "bg-white/[0.02] hover:bg-white/[0.04]"
+                            ? "hover:bg-slate-50"
+                            : "bg-slate-50/50 hover:bg-slate-50"
                         }`}
                       >
-                        <td className="px-3 py-2.5 font-mono text-[10px] text-slate-500">{row.subacaoId}</td>
-                        <td className="px-3 py-2.5 max-w-[80px] truncate text-slate-500" title={row.pdcaTitulo}>
+                        <td className="px-3 py-2.5 font-mono text-[10px] text-[#5F83B1]">{row.subacaoId}</td>
+                        <td className="px-3 py-2.5 max-w-[80px] truncate text-[#5F83B1]" title={row.pdcaTitulo}>
                           {row.pdcaId}
                         </td>
                         <td className="px-3 py-2.5">
@@ -195,14 +195,14 @@ export function ExecucaoTab({ pdcas }: ExecucaoTabProps) {
                             {pc.label}
                           </span>
                         </td>
-                        <td className="px-3 py-2.5 max-w-[120px] truncate text-slate-400" title={row.acao}>
+                        <td className="px-3 py-2.5 max-w-[120px] truncate text-slate-500" title={row.acao}>
                           {row.acao}
                         </td>
-                        <td className="px-3 py-2.5 max-w-[200px] truncate font-medium text-slate-100" title={row.subacao}>
+                        <td className="px-3 py-2.5 max-w-[200px] truncate font-medium text-slate-800" title={row.subacao}>
                           {row.subacao}
                         </td>
-                        <td className="px-3 py-2.5 text-slate-400">{row.responsavel || "—"}</td>
-                        <td className="px-3 py-2.5 text-slate-500">{row.prazo || "—"}</td>
+                        <td className="px-3 py-2.5 text-slate-500">{row.responsavel || "—"}</td>
+                        <td className="px-3 py-2.5 text-slate-400">{row.prazo || "—"}</td>
                         <td className="px-3 py-2.5">
                           <span className={`inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 ${sc.badge}`}>
                             <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${sc.dot}`} />
@@ -221,7 +221,7 @@ export function ExecucaoTab({ pdcas }: ExecucaoTabProps) {
                   })}
                   {filtered.length === 0 && (
                     <tr>
-                      <td colSpan={9} className="px-4 py-12 text-center text-sm text-slate-600">
+                      <td colSpan={9} className="px-4 py-12 text-center text-sm text-slate-400">
                         Nenhuma tarefa encontrada com os filtros aplicados.
                       </td>
                     </tr>
@@ -235,9 +235,9 @@ export function ExecucaoTab({ pdcas }: ExecucaoTabProps) {
 
       {/* ── RIGHT: side drawer ── */}
       {selectedRow && (
-        <div className="w-72 shrink-0 flex flex-col overflow-hidden rounded-xl border border-[#1E7FD5]/20 bg-[#0E2539]">
+        <div className="w-72 shrink-0 flex flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
           {/* Drawer header */}
-          <div className="border-b border-white/10 p-4">
+          <div className="border-b border-slate-100 p-4">
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0">
                 <div className="mb-1 flex items-center gap-2">
@@ -246,12 +246,12 @@ export function ExecucaoTab({ pdcas }: ExecucaoTabProps) {
                     {PHASE_CONFIG[selectedRow.phase]?.label ?? selectedRow.phase}
                   </span>
                 </div>
-                <p className="text-sm font-semibold leading-snug text-slate-100">{selectedRow.subacao}</p>
-                <p className="mt-1 text-xs text-slate-500 truncate">{selectedRow.acao}</p>
+                <p className="text-sm font-semibold leading-snug text-slate-800">{selectedRow.subacao}</p>
+                <p className="mt-1 text-xs text-slate-400 truncate">{selectedRow.acao}</p>
               </div>
               <button
                 onClick={() => setSelectedRow(null)}
-                className="shrink-0 rounded-lg p-1 hover:bg-white/10 transition-colors"
+                className="shrink-0 rounded-lg p-1 hover:bg-slate-100 transition-colors"
               >
                 <X className="h-4 w-4 text-slate-400" />
               </button>
@@ -269,16 +269,16 @@ export function ExecucaoTab({ pdcas }: ExecucaoTabProps) {
                 );
               })()}
               {selectedRow.responsavel && (
-                <span className="text-slate-500">• {selectedRow.responsavel}</span>
+                <span className="text-slate-400">• {selectedRow.responsavel}</span>
               )}
               {selectedRow.prazo && (
-                <span className="text-slate-500">• {selectedRow.prazo}</span>
+                <span className="text-slate-400">• {selectedRow.prazo}</span>
               )}
             </div>
           </div>
 
           {/* Drawer tab nav */}
-          <div className="flex border-b border-white/10">
+          <div className="flex border-b border-slate-100">
             {(
               [
                 { key: "como",       label: "Como Fazer" },
@@ -292,8 +292,8 @@ export function ExecucaoTab({ pdcas }: ExecucaoTabProps) {
                 onClick={() => setDrawerTab(t.key)}
                 className={`flex-1 py-2 text-[10px] font-semibold transition-colors ${
                   drawerTab === t.key
-                    ? "border-b-2 border-[#1E7FD5] text-[#82C4F8]"
-                    : "text-slate-600 hover:text-slate-300"
+                    ? "border-b-2 border-[#006AD7] text-[#006AD7]"
+                    : "text-slate-400 hover:text-slate-700"
                 }`}
               >
                 {t.label}
@@ -312,10 +312,10 @@ export function ExecucaoTab({ pdcas }: ExecucaoTabProps) {
                     .filter(Boolean)
                     .map((line, i) => (
                       <li key={i} className="flex gap-2.5">
-                        <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-[#1E7FD5]/20 text-[9px] font-bold text-[#82C4F8]">
+                        <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-[#006AD7]/10 text-[9px] font-bold text-[#006AD7]">
                           {i + 1}
                         </span>
-                        <span className="text-xs leading-relaxed text-slate-300">{line}</span>
+                        <span className="text-xs leading-relaxed text-slate-700">{line}</span>
                       </li>
                     ))}
                 </ol>
@@ -336,7 +336,7 @@ export function ExecucaoTab({ pdcas }: ExecucaoTabProps) {
 
             {drawerTab === "obs" && (
               selectedRow.evidenciaSgq ? (
-                <p className="text-xs leading-relaxed text-slate-300">{selectedRow.evidenciaSgq}</p>
+                <p className="text-xs leading-relaxed text-slate-700">{selectedRow.evidenciaSgq}</p>
               ) : (
                 <DrawerEmpty
                   label="Sem observações do auditor."
@@ -362,7 +362,7 @@ function DrawerEmpty({ label, hint }: { label: string; hint: string }) {
   return (
     <div className="flex flex-col items-center justify-center py-10 text-center">
       <p className="text-xs text-slate-500">{label}</p>
-      <p className="mt-2 text-[10px] leading-relaxed text-slate-700">{hint}</p>
+      <p className="mt-2 text-[10px] leading-relaxed text-slate-400">{hint}</p>
     </div>
   );
 }
